@@ -6,7 +6,7 @@ import pickle
 
 from core.dynamics.carla_4state import CarlaDynamics
 
-PATH = './test/trained_cbf.npy'
+PATH = './results/trained_cbf.npy'
 
 def main():
 
