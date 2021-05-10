@@ -13,6 +13,8 @@ from core.utils.viz import Visualizer
 from core.data.load import load_data, load_data_v2
 from core.losses.cbf_loss import CBFLoss
 
+from core.output_maps.pos_to_velocity import PosToVelocity
+
 from core.dynamics.carla_4state import CarlaDynamics
 
 def main(args):
@@ -27,7 +29,8 @@ def main(args):
 
     key_seq = hk.PRNGSequence(23)
     
-    data_dict = load_data_v2(args)
+    output_map = PosToVelocity()
+    data_dict = load_data_v2(args, output_map=None)
 
     alpha = lambda x : x
     dual_vars = init_dual_vars(args, data_dict)
