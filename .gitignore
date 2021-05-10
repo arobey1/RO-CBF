@@ -1,2 +1,3 @@
-data/
+/data/
 wandb/
+__pycache__/
