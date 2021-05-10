@@ -47,7 +47,7 @@ def make_safe_controller(nominal_ctrl, h):
         # setup and solve HCBF-QP with CVXPY
         u_mod = cp.Variable(len(u_nom))
         obj = cp.Minimize(cp.sum_squares(u_mod - u_nom))
-        constraints = [jnp.dot(dh_of_x, f_of_x) + u_mod.T @ jnp.dot(g_of_x.T, dh_of_x) + h_of_x >= 0]
+        constraints = [jnp.dot(dh_of_x, f_of_x) + u_mod.T @ jnp.dot(g_of_x.T, dh_of_x) - 0.6 * jnp.linalg.norm(dh_of_x) + h_of_x >= 0]
         prob = cp.Problem(obj, constraints)
         prob.solve(solver=cp.SCS, verbose=False, max_iters=20000, eps=1e-10)
 
