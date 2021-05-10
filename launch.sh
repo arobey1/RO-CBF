@@ -1,9 +1,11 @@
 #!/bin/bash
 
+### CHECK CTE *= 2 actually worked
+
 export SYSTEM='carla'
 export DATA_PATH_1='./data/carla/Data_Collection_Compiled_noisy2.pd'
 
-export RESULTS_PATH='./results'
+export RESULTS_PATH='./results-clean-ae-no-lip'
 
 # Margins for optimization constraints 
 export GAMMA_SAFE=0.3
@@ -17,17 +19,26 @@ export LAMBDA_PARAM=0.01
 # Robustness
 export LAMBDA_ROBUST=0.6
 
+# Lipschitz output term
+export LIP_OUTPUT_TERM=0.1
+
 # Training
 export NET_DIMS=(32 16)
-export N_EPOCHS=10000
+export N_EPOCHS=50000
 export LEARNING_RATE=0.005
 export DUAL_STEP_SIZE=0.05
-export DUAL_SCHEME='avg'
+export DUAL_SCHEME='ae'
 
 # Larger thresh --> more neighbors --> fewer boundary points
 # Smaller thresh --> fewer neighbors --> more boundary points
 
 # Boundary/Unsafe state sampling
+
+# For estimated data
+# export NEIGHBOR_THRESH=0.07
+# export MIN_N_NEIGHBORS=200
+
+# For clean data
 export NEIGHBOR_THRESH=0.045
 export MIN_N_NEIGHBORS=200
 
@@ -47,4 +58,5 @@ python main.py \
     --nbr-thresh $NEIGHBOR_THRESH --min-n-nbrs $MIN_N_NEIGHBORS \
     --n-samp-unsafe $N_SAMP_UNSAFE --n-samp-safe $N_SAMP_SAFE --n-samp-all $N_SAMP_ALL \
     --dual-scheme $DUAL_SCHEME \
-    --robust --lambda-robust $LAMBDA_ROBUST 
+    --robust --lambda-robust $LAMBDA_ROBUST
+    # --use-lip-output-term --lip-output-term $LIP_OUTPUT_TERM
