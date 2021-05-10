@@ -30,6 +30,12 @@ def parse_args():
     parser.add_argument('--lambda-robust', type=float, default=0.25,
                             help='Weight on robustness term (Delta in paper).')
 
+    # Lipschitz term for output map
+    parser.add_argument('--use-lip-output-term', action='store_true',
+                            help='Adds the lipschitz term to the CBF inequality.')
+    parser.add_argument('--lip-output-term', type=float, default=0.1,
+                            help='Lipschitz term (Lip_B(\Delta)_X(y) in the paper')
+
     # Paths
     parser.add_argument('--results-path', type=str, default='./results',
                             help='Path at which we will store the outputs.')

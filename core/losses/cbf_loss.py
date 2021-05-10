@@ -49,6 +49,9 @@ class CBFLoss:
             if self._hparams.robust is True:
                 cbf_term_ -= self._hparams.lambda_robust * jnp.linalg.norm(dh)
 
+            if self._hparams.use_lip_output_term is True:
+                cbf_term_ -= self._hparams.lip_output_term
+
             return cbf_term_
 
         full_data = jnp.hstack((states, disturbances))
