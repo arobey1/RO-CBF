@@ -38,9 +38,15 @@ def load_data_v2(args, output_map=None):
     # quit()
 
     df = df[all_cols]
-    df['cte'] = df['cte'].apply(lambda x: x * 2)
-    n_all = len(df.index)
+    # df['cte'] = df['cte'].apply(lambda x: x * 2)
 
+    df_copy = df.copy()
+    df_copy['cte'] = df_copy['cte'].multiply(-1)
+    df_copy['theta_e'] = df_copy['theta_e'].multiply(-1)
+    df_copy['dtheta_t'] = df_copy['dtheta_t'].multiply(-1)
+    df = pd.concat([df, df_copy], ignore_index=True)
+
+    n_all = len(df.index)
     get_bdy_states_v2(df, state_cols, args.nbr_thresh, args.min_n_nbrs)
     n_safe, n_unsafe = len(df[df.Safe == 1].index), len(df[df.Safe == 0].index)
 
