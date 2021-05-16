@@ -3,9 +3,10 @@
 ### CHECK CTE *= 2 actually worked
 
 export SYSTEM='carla'
-export DATA_PATH_1='./data/carla/Data_Collection_Compiled_noisy2.pd'
+export DATA_PATH_1='./data/carla/Data_Collection_Compiled_noisy3.pd'
+export DATA_PATH_2='./data/carla/Data_Collection_Compiled_noisy4.pd'
 
-export RESULTS_PATH='./results-clean-ae-no-lip'
+export RESULTS_PATH='./results-clean-data-aug-fewer-safe-states'
 
 # Margins for optimization constraints 
 export GAMMA_SAFE=0.3
@@ -29,8 +30,8 @@ export LEARNING_RATE=0.005
 export DUAL_STEP_SIZE=0.05
 export DUAL_SCHEME='ae'
 
-# Larger thresh --> more neighbors --> fewer boundary points
-# Smaller thresh --> fewer neighbors --> more boundary points
+# Larger thresh --> more boundary points
+# Smaller thresh --> fewer boundary points
 
 # Boundary/Unsafe state sampling
 
@@ -39,7 +40,11 @@ export DUAL_SCHEME='ae'
 # export MIN_N_NEIGHBORS=200
 
 # For clean data
-export NEIGHBOR_THRESH=0.045
+# export NEIGHBOR_THRESH=0.045
+# export MIN_N_NEIGHBORS=200
+
+# For clean data with data aug
+export NEIGHBOR_THRESH=0.07
 export MIN_N_NEIGHBORS=200
 
 # Additional state sampling
@@ -50,7 +55,7 @@ export N_SAMP_ALL=0
 # $DATA_PATH_2 $DATA_PATH_3
 
 python main.py \
-    --system $SYSTEM --data-path $DATA_PATH_1 --results-path $RESULTS_PATH \
+    --system $SYSTEM --data-path $DATA_PATH_1 $DATA_PATH_2 --results-path $RESULTS_PATH \
     --gamma-safe $GAMMA_SAFE --gamma-unsafe $GAMMA_UNSAFE --gamma-dyn $GAMMA_DYN \
     --lambda-grad $LAMBDA_GRAD --lambda-param $LAMBDA_PARAM \
     --net-dims ${NET_DIMS[@]} --n-epochs $N_EPOCHS \
