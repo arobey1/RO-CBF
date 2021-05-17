@@ -20,31 +20,25 @@ def load_data_v2(args, output_map=None):
         state_cols = output_map.state_cols
         df = output_map.map(df)
 
-    disturbance_cols = ['dtheta_t']
-    all_cols = state_cols + disturbance_cols
+    disturbance_cols, input_cols = ['dtheta_t'], ['input']
+    all_cols = state_cols + disturbance_cols + input_cols
 
-    # pd.set_option('display.max_rows', 1000)
-    # head_df = df.head(1000)
-    # print(head_df[['speed(m/s)', 'v_est']])
-    # quit()
-
-
-    # import seaborn as sns
-    # import matplotlib.pyplot as plt
-
-    # sns.set_style('darkgrid')
-    # sns.scatterplot(data=df, x='speed(m/s)', y='v_est')
-    # plt.savefig('compare.png')
-    # quit()
+    # normalization
+    df['cte'] = df['cte'] / df['cte'].abs().max()
+    df['speed(m/s)'] = df['speed(m/s)'] / df['speed(m/s)'].abs().max()
+    df['theta_e'] = df['theta_e'] / df['theta_e'].abs().max()
+    df['d'] = df['d'] / df['d'].abs().max()
+    df['dtheta_t'] = df['dtheta_t'] / df['dtheta_t'].abs().max()
+    df['input'] = df['input'] / df['input'].abs().max()
 
     df = df[all_cols]
-    # df['cte'] = df['cte'].apply(lambda x: x * 2)
 
-    df_copy = df.copy()
-    df_copy['cte'] = df_copy['cte'].multiply(-1)
-    df_copy['theta_e'] = df_copy['theta_e'].multiply(-1)
-    df_copy['dtheta_t'] = df_copy['dtheta_t'].multiply(-1)
-    df = pd.concat([df, df_copy], ignore_index=True)
+    if args.data_augmentation is True:
+        df_copy = df.copy()
+        df_copy['cte'] = df_copy['cte'].multiply(-1)
+        df_copy['theta_e'] = df_copy['theta_e'].multiply(-1)
+        df_copy['dtheta_t'] = df_copy['dtheta_t'].multiply(-1)
+        df = pd.concat([df, df_copy], ignore_index=True)
 
     n_all = len(df.index)
     get_bdy_states_v2(df, state_cols, args.nbr_thresh, args.min_n_nbrs)
@@ -54,20 +48,12 @@ def load_data_v2(args, output_map=None):
         'safe': df[df.Safe == 1][state_cols].to_numpy(),
         'unsafe': df[df.Safe == 0][state_cols].to_numpy(),
         'all': df[state_cols].to_numpy(),
-        'all_dists': df[disturbance_cols].to_numpy()
+        'all_dists': df[disturbance_cols].to_numpy(),
+        'all_inputs': df[input_cols].to_numpy()
     }
 
-    # get_bdy_states_v3(df, state_cols, args.nbr_thresh, args.min_n_nbrs)
-    # n_safe, n_unsafe = len(df[df.Safe == 1]), len(df[df.Unsafe == 1])
-
-    # data_dict = {
-    #     'safe': df[df.Safe == 1][state_cols].to_numpy(),
-    #     'unsafe': df[df.Unsafe == 1][state_cols].to_numpy(),
-    #     'all': df[state_cols].to_numpy(),
-    #     'all_dists': df[disturbance_cols].to_numpy()
-    # }
-
     create_tables(n_all, n_safe, n_unsafe, args)
+    # quit()
     return data_dict
 
 def load_data(args):
