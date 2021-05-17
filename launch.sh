@@ -6,7 +6,7 @@ export DATA_PATH_2='./data/carla/Data_Collection_Compiled_noisy6.pd'
 export DATA_PATH_3='./data/carla/Data_Collection_Compiled_noisy7.pd'
 export DATA_PATH_4='./data/carla/Data_Collection_Compiled_noisy8.pd'
 
-export RESULTS_PATH='./results-less-conservative-larger-delta-data-aug'
+export RESULTS_PATH='./results-tmp'
 
 # Margins for optimization constraints 
 export GAMMA_SAFE=0.3

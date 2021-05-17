@@ -23,6 +23,14 @@ def load_data_v2(args, output_map=None):
     disturbance_cols, input_cols = ['dtheta_t'], ['input']
     all_cols = state_cols + disturbance_cols + input_cols
 
+    print(f"cte max: {df['cte'].abs().max()}")
+    print(f"speed(m/s) max: {df['speed(m/s)'].abs().max()}")
+    print(f"theta_e max: {df['theta_e'].abs().max()}")
+    print(f"d max: {df['d'].abs().max()}")
+    print(f"dtheta_t max: {df['dtheta_t'].abs().max()}")
+    print(f"input max: {df['input'].abs().max()}")
+    quit()
+
     # normalization
     df['cte'] = df['cte'] / df['cte'].abs().max()
     df['speed(m/s)'] = df['speed(m/s)'] / df['speed(m/s)'].abs().max()
