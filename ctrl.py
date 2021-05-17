@@ -10,6 +10,13 @@ PATH = './results-less-conservative/trained_cbf.npy'
 DELTA_F = 0.3
 DELTA_G = 0.4
 
+CTE_MAX = 1.6175946161054822
+SPEED_MAX = 7.285775632710312
+THETA_E_MAX = 2.9999982774423595
+D_MAX = 26.73716521658956
+DTHETA_T_MAX = 0.8976939936192778
+INPUT_MAX = 0.23236677428018998
+
 def main():
 
     net = hk.without_apply_rng(hk.transform(lambda x: net_fn()(x)))
@@ -41,6 +48,16 @@ def make_safe_controller(nominal_ctrl, h):
             x: state.
             d: disturbance.
         """
+
+        cte, v, θ_e, d_var = x
+        x = jnp.array([
+            cte / CTE_MAX, 
+            v / SPEED_MAX, 
+            θ_e / THETA_E_MAX, 
+            d_var / D_MAX
+        ]).reshape(x.shape)
+
+        d /= DTHETA_T_MAX
 
         # compute action used by nominal controller
         u_nom = nominal_ctrl(x)
