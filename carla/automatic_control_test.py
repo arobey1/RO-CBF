@@ -30,6 +30,7 @@ import haiku as hk
 import pickle
 from core.dynamics.carla_4state import CarlaDynamics
 import matplotlib.pyplot as plt
+from ctrl import *
 
 try:
     import pygame
@@ -49,6 +50,16 @@ except ImportError:
 
 PATH = './trained_cbf.npy'
 PI = 3.1415926
+
+# DELTA_F = 0.3
+# DELTA_G = 0.4
+
+# CTE_MAX = 1.6175946161054822
+# SPEED_MAX = 7.285775632710312
+# THETA_E_MAX = 2.9999982774423595
+# D_MAX = 26.73716521658956
+# DTHETA_T_MAX = 0.8976939936192778
+# INPUT_MAX = 0.23236677428018998
 
 # ==============================================================================
 # -- Find CARLA module ---------------------------------------------------------
@@ -707,7 +718,7 @@ def game_loop(args):
     list_g = []
 
     # loop for 107 starting points
-    for i in range(107):
+    for i in range(12, 107):
         pygame.init()
         pygame.font.init()
         world = None
@@ -841,22 +852,16 @@ def game_loop(args):
                     def learned_h(x): return jnp.sum(net.apply(loaded_params, x))
                     zero_ctrl = get_zero_controller()
                     safe_ctrl = make_safe_controller(zero_ctrl, learned_h)
-                    steering_wheel_input, h, h_dire, g = safe_ctrl(jnp.array([cte, v, theta_e, d]), dot_phi_t)
+                    # steering_wheel_input, h, h_dire, g = safe_ctrl(jnp.array([cte, v, theta_e, d]), dot_phi_t)
+                    steering_wheel_input, h = safe_ctrl(jnp.array([cte, v, theta_e, d]), dot_phi_t)
                     control.steer = np.arctan(steering_wheel_input[0]) / 70 * 180 / PI
                     list_cte.append(cte)
                     list_theta_e.append(theta_e)
                     list_dot_phit.append(dot_phi_t)
                     list_steer.append(control.steer)
                     list_h.append(h)
-                    list_h_dire.append(h_dire)
-                    list_g.append(g)
-                    # if (np.abs(np.arctan(steering_wheel_input[0]) / 70 * 180 / PI) > 1e-4):
-                    #     print("cte", cte)
-                    #     print("v", v)
-                    #     print("theta_e", theta_e)
-                    #     print("d", d)
-                    #     print("dot_phi_t", dot_phi_t)
-                    #     print("steer", np.arctan(steering_wheel_input[0]) / 70 * 180 / PI)
+                    # list_h_dire.append(h_dire)
+                    # list_g.append(g)
 
                     # last_control = world.player.get_control()
                     # acceleration = world.player.get_acceleration()
@@ -899,15 +904,17 @@ def game_loop(args):
                     world.player.apply_control(control)
 
         finally:
+            print(list_steer)
             plt.figure()
             plt.plot(list_cte)
             plt.plot(list_theta_e)
             plt.plot(list_dot_phit)
             plt.plot(list_steer)
             plt.plot(list_h)
-            plt.plot(list_h_dire)
-            plt.plot(list_g)
-            plt.legend(("cte", "theta_e", "dot_phi_t", "steer", "h", "h_derivative", "g"))
+            # plt.plot(list_h_dire)
+            # plt.plot(list_g)
+            # plt.legend(("cte", "theta_e", "dot_phi_t", "steer", "h", "h_derivative", "g"))
+            plt.legend(("cte", "theta_e", "dot_phi_t", "steer", "h"))
             plt.show()
             if world is not None:
                 world.destroy()
@@ -1000,57 +1007,122 @@ def main():
         print('\nCancelled by user. Bye!')
 
 
-def make_safe_controller(nominal_ctrl, h):
-    """Create a safe controller using learned hybrid CBF."""
+# def make_safe_controller(nominal_ctrl, h):
+#     """Create a safe controller using learned hybrid CBF."""
 
-    dh = jax.grad(h, argnums=0)
-    dyn = CarlaDynamics()
+#     dh = jax.grad(h, argnums=0)
+#     dyn = CarlaDynamics()
 
-    def safe_ctrl(x, d):
-        """Solves HCBF-QP to map an input state to a safe action u.
+#     def safe_ctrl(x, d):
+#         """Solves HCBF-QP to map an input state to a safe action u.
 
-        Params:
-            x: state.
-            d: disturbance.
-        """
+#         Params:
+#             x: state.
+#             d: disturbance.
+#         """
 
-        # compute action used by nominal controller
-        u_nom = nominal_ctrl(x)
+#         # compute action used by nominal controller
+#         u_nom = nominal_ctrl(x)
 
-        # compute function values
-        f_of_x, g_of_x = dyn.f(x, d), dyn.g(x)
-        h_of_x = h(x)
-        dh_of_x = dh(x)
+#         # compute function values
+#         f_of_x, g_of_x = dyn.f(x, d), dyn.g(x)
+#         h_of_x = h(x)
+#         dh_of_x = dh(x)
 
-        # setup and solve HCBF-QP with CVXPY
-        u_mod = cp.Variable(len(u_nom))
-        obj = cp.Minimize(cp.sum_squares(u_mod - u_nom))
-        constraints = [jnp.dot(dh_of_x, f_of_x) + u_mod.T @ jnp.dot(g_of_x.T, dh_of_x) + h_of_x >= 0]
-        prob = cp.Problem(obj, constraints)
-        prob.solve(solver=cp.SCS, verbose=False, max_iters=20000, eps=1e-10)
+#         # setup and solve HCBF-QP with CVXPY
+#         u_mod = cp.Variable(len(u_nom))
+#         obj = cp.Minimize(cp.sum_squares(u_mod - u_nom))
+#         constraints = [jnp.dot(dh_of_x, f_of_x) + u_mod.T @ jnp.dot(g_of_x.T, dh_of_x) + h_of_x >= 0]
+#         prob = cp.Problem(obj, constraints)
+#         prob.solve(solver=cp.SCS, verbose=False, max_iters=20000, eps=1e-10)
 
-        if prob.status in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE):
-            return u_mod.value, h_of_x, np.linalg.norm(dh_of_x), np.linalg.norm(g_of_x)
-        return jnp.array([0.]), h_of_x, np.linalg.norm(dh_of_x), np.linalg.norm(g_of_x)
+#         if prob.status in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE):
+#             return u_mod.value, h_of_x, np.linalg.norm(dh_of_x), np.linalg.norm(g_of_x)
+#         return jnp.array([0.]), h_of_x, np.linalg.norm(dh_of_x), np.linalg.norm(g_of_x)
 
-    return safe_ctrl
-
-
-def net_fn(net_dims=[32, 16]):
-    """Feed-forward NN architecture."""
-
-    layers = []
-    for dim in net_dims:
-        layers.extend([hk.Linear(dim), jnp.tanh])
-    layers.append(hk.Linear(1))
-
-    return hk.Sequential(layers)
+#     return safe_ctrl
 
 
-def get_zero_controller():
-    """Returns a zero controller"""
+# def net_fn(net_dims=[32, 16]):
+#     """Feed-forward NN architecture."""
 
-    return lambda state: jnp.array([0.])
+#     layers = []
+#     for dim in net_dims:
+#         layers.extend([hk.Linear(dim), jnp.tanh])
+#     layers.append(hk.Linear(1))
+
+#     return hk.Sequential(layers)
+
+
+# def get_zero_controller():
+#     """Returns a zero controller"""
+
+#     return lambda state: jnp.array([0.])
+
+# def make_safe_controller(nominal_ctrl, h):
+#     """Create a safe controller using learned hybrid CBF."""
+
+#     dh = jax.grad(h, argnums=0)
+#     dyn = CarlaDynamics()
+#     def alpha(x): return x
+#     def norm(x): return jnp.linalg.norm(x)
+#     def cpnorm(x): return cp.norm(x)
+#     def dot(x, y): return jnp.dot(x, y)
+
+#     def safe_ctrl(x, d):
+#         """Solves HCBF-QP to map an input state to a safe action u.
+
+#         Params:
+#             x: state.
+#             d: disturbance.
+#         """
+
+#         cte, v, θ_e, d_var = x
+#         x = jnp.array([
+#             cte / CTE_MAX,
+#             v / SPEED_MAX,
+#             θ_e / THETA_E_MAX,
+#             d_var / D_MAX
+#         ]).reshape(x.shape)
+
+#         d /= DTHETA_T_MAX
+
+#         # compute action used by nominal controller
+#         u_nom = nominal_ctrl(x)
+
+#         # setup and solve HCBF-QP with CVXPY
+#         u_mod = cp.Variable(len(u_nom))
+#         obj = cp.Minimize(cp.sum_squares(u_mod - u_nom))
+#         constraints = [
+#             dot(dh(x), dyn.f(x, d)) + u_mod.T @ dot(dyn.g(x).T, dh(x)) +
+#             alpha(h(x)) - norm(dh(x)) * (DELTA_F + DELTA_G * cpnorm(u_mod)) >= 0
+#         ]
+
+#         prob = cp.Problem(obj, constraints)
+#         prob.solve(solver=cp.SCS, verbose=True, max_iters=20000, eps=1e-10)
+
+#         if prob.status in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE):
+#             return u_mod.value
+#         return jnp.array([0.])
+
+#     return safe_ctrl
+
+
+# def net_fn(net_dims=[32, 16]):
+#     """Feed-forward NN architecture."""
+
+#     layers = []
+#     for dim in net_dims:
+#         layers.extend([hk.Linear(dim), jnp.tanh])
+#     layers.append(hk.Linear(1))
+
+#     return hk.Sequential(layers)
+
+
+# def get_zero_controller():
+#     """Returns a zero controller"""
+
+#     return lambda state: jnp.array([0.])
 
 
 if __name__ == '__main__':
