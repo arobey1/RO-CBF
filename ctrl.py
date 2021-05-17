@@ -6,7 +6,9 @@ import pickle
 
 from core.dynamics.carla_4state import CarlaDynamics
 
-PATH = './results/trained_cbf.npy'
+PATH = './results-less-conservative/trained_cbf.npy'
+DELTA_F = 0.3
+DELTA_G = 0.4
 
 def main():
 
@@ -20,13 +22,17 @@ def main():
     safe_ctrl = make_safe_controller(zero_ctrl, learned_h)
 
     # Example usage:
-    # u = safe_ctrl(jnp.array([1., 2., 3., 4.]), 1)
+    u = safe_ctrl(jnp.array([1., 2., 3., 4.]), 1)
 
 def make_safe_controller(nominal_ctrl, h):
     """Create a safe controller using learned hybrid CBF."""
 
     dh = jax.grad(h, argnums=0)
     dyn = CarlaDynamics()
+    alpha = lambda x : x
+    norm = lambda x : jnp.linalg.norm(x)
+    cpnorm = lambda x : cp.norm(x)
+    dot = lambda x, y : jnp.dot(x, y)
 
     def safe_ctrl(x, d):
         """Solves HCBF-QP to map an input state to a safe action u.
@@ -39,17 +45,15 @@ def make_safe_controller(nominal_ctrl, h):
         # compute action used by nominal controller
         u_nom = nominal_ctrl(x)
 
-        # compute function values
-        f_of_x, g_of_x = dyn.f(x, d), dyn.g(x)
-        h_of_x = h(x)
-        dh_of_x = dh(x)
-
         # setup and solve HCBF-QP with CVXPY
         u_mod = cp.Variable(len(u_nom))
         obj = cp.Minimize(cp.sum_squares(u_mod - u_nom))
-        constraints = [jnp.dot(dh_of_x, f_of_x) + u_mod.T @ jnp.dot(g_of_x.T, dh_of_x) - 0.6 * jnp.linalg.norm(dh_of_x) + h_of_x >= 0]
+        constraints = [
+            dot(dh(x), dyn.f(x, d)) + u_mod.T @ dot(dyn.g(x).T, dh(x)) + alpha(h(x)) - norm(dh(x)) * (DELTA_F + DELTA_G * cpnorm(u_mod)) >= 0
+        ]
+        
         prob = cp.Problem(obj, constraints)
-        prob.solve(solver=cp.SCS, verbose=False, max_iters=20000, eps=1e-10)
+        prob.solve(solver=cp.SCS, verbose=True, max_iters=20000, eps=1e-10)
 
         if prob.status in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE):
             return u_mod.value
