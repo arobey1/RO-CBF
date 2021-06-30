@@ -11,7 +11,6 @@ import pickle
 from core.utils.parse_args import parse_args
 from core.utils.viz import Visualizer
 from core.data.load import load_data, load_data_v2
-# from core.losses.cbf_loss import CBFLoss
 from core.losses.new_cbf_loss import CBFLoss
 
 from core.output_maps.pos_to_velocity import PosToVelocity
@@ -31,13 +30,13 @@ def main(args):
     key_seq = hk.PRNGSequence(23)
     
     # output_map = PosToVelocity()
-    data_dict = load_data_v2(args, output_map=None)
+    data_dict, T_x = load_data_v2(args, output_map=None)
 
     alpha = lambda x : x
     dual_vars = init_dual_vars(args, data_dict)
 
     net = hk.without_apply_rng(hk.transform(lambda x: net_fn(args)(x)))
-    dynamics = CarlaDynamics()
+    dynamics = CarlaDynamics(T_x)
 
     PrimalDualLoss = CBFLoss(args, net, dynamics, alpha, dual_vars)
     viz = Visualizer(net, args.results_path, data_dict, PrimalDualLoss.cbf_term)
