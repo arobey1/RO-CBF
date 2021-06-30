@@ -3,12 +3,20 @@ import numpy as np
 import jax.numpy as jnp
 from sklearn.neighbors import KDTree
 from prettytable import PrettyTable
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
+import json
+import os
 
 # Idea: run Mr Peanut again on the safe states, and only enforce the safe
 # constraint on the safe states identified by the second run on Mr Peanut,
 # leaving a buffer zone in the middle.
 
 def load_data_v2(args, output_map=None):
+
+    # dictionary for storing meta data
+    meta_data = {}
 
     # load data from file
     dfs = [pd.read_pickle(path) for path in args.data_path]
@@ -20,24 +28,29 @@ def load_data_v2(args, output_map=None):
         state_cols = output_map.state_cols
         df = output_map.map(df)
 
-    disturbance_cols, input_cols = ['dtheta_t'], ['input']
+    disturbance_cols, input_cols = ['dphi_t'], ['input']
     all_cols = state_cols + disturbance_cols + input_cols
 
-    print(f"cte max: {df['cte'].abs().max()}")
-    print(f"speed(m/s) max: {df['speed(m/s)'].abs().max()}")
-    print(f"theta_e max: {df['theta_e'].abs().max()}")
-    print(f"d max: {df['d'].abs().max()}")
-    print(f"dtheta_t max: {df['dtheta_t'].abs().max()}")
-    print(f"input max: {df['input'].abs().max()}")
-    quit()
+    if args.normalize_state is True:
+        max_cte = df['cte'].abs().max()
+        max_speed = df['speed(m/s)'].abs().max()
+        max_theta_e = df['theta_e'].abs().max()
+        max_d = df['d'].abs().max()
 
-    # normalization
-    df['cte'] = df['cte'] / df['cte'].abs().max()
-    df['speed(m/s)'] = df['speed(m/s)'] / df['speed(m/s)'].abs().max()
-    df['theta_e'] = df['theta_e'] / df['theta_e'].abs().max()
-    df['d'] = df['d'] / df['d'].abs().max()
-    df['dtheta_t'] = df['dtheta_t'] / df['dtheta_t'].abs().max()
-    df['input'] = df['input'] / df['input'].abs().max()
+        meta_data['normalizers'] = {
+            'cte': max_cte, 'speed': max_speed, 'theta_e': max_theta_e, 'd': max_d
+        }
+
+        df['cte'] = df['cte'] / max_cte
+        df['speed(m/s)'] = df['speed(m/s)'] / max_speed
+        df['theta_e'] = df['theta_e'] / max_theta_e
+        df['d'] = df['d'] /max_d
+
+        T_x = jnp.diag(jnp.array([
+            max_cte, max_speed, max_theta_e, max_d
+        ]))
+    else:
+        T_x = jnp.eye(4)
 
     df = df[all_cols]
 
@@ -45,11 +58,17 @@ def load_data_v2(args, output_map=None):
         df_copy = df.copy()
         df_copy['cte'] = df_copy['cte'].multiply(-1)
         df_copy['theta_e'] = df_copy['theta_e'].multiply(-1)
-        df_copy['dtheta_t'] = df_copy['dtheta_t'].multiply(-1)
+        df_copy['dphi_t'] = df_copy['dphi_t'].multiply(-1)
         df = pd.concat([df, df_copy], ignore_index=True)
 
     n_all = len(df.index)
     get_bdy_states_v2(df, state_cols, args.nbr_thresh, args.min_n_nbrs)
+
+    if args.n_samp_all != 0:
+        df_copy = df.copy()
+        df[state_cols] += 0.01 * np.random.randn(*df[state_cols].shape)
+        df = pd.concat([df, df_copy])
+    
     n_safe, n_unsafe = len(df[df.Safe == 1].index), len(df[df.Safe == 0].index)
 
     data_dict = {
@@ -60,15 +79,16 @@ def load_data_v2(args, output_map=None):
         'all_inputs': df[input_cols].to_numpy()
     }
 
-    create_tables(n_all, n_safe, n_unsafe, args)
-    # quit()
-    return data_dict
+    create_tables(n_all, n_safe, n_unsafe, args, meta_data)
+    _save_meta_data(meta_data, args)
+
+    return data_dict, T_x
 
 def load_data(args):
 
     if args.system == 'carla':
         state_cols = ['cte', 'speed(m/s)', 'theta_e', 'd']
-        disturbance_cols = ['dtheta_t']
+        disturbance_cols = ['dphi_t']
         dfs = [pd.read_pickle(path) for path in args.data_path]
         df = dfs[0] if len(dfs) == 1 else pd.concat(dfs, ignore_index=True)
 
@@ -165,16 +185,34 @@ def sample_extra_states(states, num_samp):
     extra_states = [states + 0.01 * np.random.randn(*states.shape) for _ in range(num_samp)]
     return np.vstack(extra_states)
 
-def create_tables(n_all, n_safe, n_unsafe, args):
+def create_tables(n_all, n_safe, n_unsafe, args, meta_data):
 
-    pct_safe = f'{(n_safe * (args.n_samp_safe + 1)) / (n_all * (args.n_samp_all + 1)) * 100:.1f} %'
-    pct_unsafe = f'{(n_unsafe * (args.n_samp_unsafe + 1)) / (n_all * (args.n_samp_all + 1)) * 100:.1f} %'
+    meta_data['pct_safe'] = (n_safe * (args.n_samp_safe + 1)) / (n_all * (args.n_samp_all + 1)) * 100
+    meta_data['pct_unsafe'] = (n_unsafe * (args.n_samp_unsafe + 1)) / (n_all * (args.n_samp_all + 1)) * 100
+    meta_data['num-expert-states'] = {'all': n_all, 'safe': n_safe, 'unsafe': n_unsafe}
+    meta_data['num-samp-states'] = {
+        'all': n_all * args.n_samp_all, 'safe': n_safe * args.n_samp_safe, 'unsafe': n_unsafe * args.n_samp_unsafe
+    }
+    meta_data['num-total-states'] = {
+        'all': n_all * (args.n_samp_all + 1), 'safe': n_safe * (args.n_samp_safe + 1), 'unsafe': n_unsafe * (args.n_samp_unsafe + 1)
+    }
 
     expert_table = PrettyTable()
     expert_table.align = 'l'
     expert_table.field_names = ['State type', '# expert states', '# sampled states', 'Total', 'Percent of Total']
     expert_table.add_row(['All', n_all, n_all * args.n_samp_all, n_all * (args.n_samp_all + 1), '--'])
-    expert_table.add_row(['Safe', n_safe, n_safe * args.n_samp_safe, n_safe * (args.n_samp_safe + 1), pct_safe])
-    expert_table.add_row(['Unsafe', n_unsafe, n_unsafe * args.n_samp_unsafe, n_unsafe * (args.n_samp_unsafe + 1), pct_unsafe])
+    expert_table.add_row(['Safe', n_safe, n_safe * args.n_samp_safe, n_safe * (args.n_samp_safe + 1), f'{meta_data["pct_safe"]:.1f} %'])
+    expert_table.add_row(['Unsafe', n_unsafe, n_unsafe * args.n_samp_unsafe, n_unsafe * (args.n_samp_unsafe + 1), f'{meta_data["pct_unsafe"]:.1f} %'])
     print(expert_table)
 
+def _save_meta_data(meta_data, args):
+    """Saves meta data line arguments to JSON file.
+    
+    Args:
+        d: Dictionary of items.
+        args: Command line arguments
+    """
+
+    fname = os.path.join(args.results_path, 'meta_data.json')
+    with open(fname, 'w') as f:
+        json.dump(meta_data, f, indent=2)
