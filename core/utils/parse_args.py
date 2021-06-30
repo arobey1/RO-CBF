@@ -44,6 +44,10 @@ def parse_args():
     parser.add_argument('--data-augmentation', action='store_true',
                             help='Data augmentation with synethic right turns.')
 
+    # Normalize states
+    parser.add_argument('--normalize-state', action='store_true',
+                            help='Normalize state during training.')
+
     # Paths
     parser.add_argument('--results-path', type=str, default='./results',
                             help='Path at which we will store the outputs.')
