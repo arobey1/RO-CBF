@@ -44,8 +44,12 @@ def load_data_v2(args, output_map=None):
         df['cte'] = df['cte'] / max_cte
         df['speed(m/s)'] = df['speed(m/s)'] / max_speed
         df['theta_e'] = df['theta_e'] / max_theta_e
-        df['d'] = df['d'] /max_d
+        df['d'] = df['d'] / max_d
 
+        # T_x should normalize the state
+        # T_x = jnp.diag(jnp.array([
+        #     1. / max_cte, 1. / max_speed, 1. / max_theta_e, 1. / max_d
+        # ]))
         T_x = jnp.diag(jnp.array([
             max_cte, max_speed, max_theta_e, max_d
         ]))

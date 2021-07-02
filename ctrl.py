@@ -3,39 +3,44 @@ import jax
 import jax.numpy as jnp
 import haiku as hk
 import pickle
+import json
+import os
 
 from core.dynamics.carla_4state import CarlaDynamics
 
-PATH = './results-less-conservative/trained_cbf.npy'
-DELTA_F = 0.3
-DELTA_G = 0.4
-
-CTE_MAX = 1.6175946161054822
-SPEED_MAX = 7.285775632710312
-THETA_E_MAX = 2.9999982774423595
-D_MAX = 26.73716521658956
-DTHETA_T_MAX = 0.8976939936192778
-INPUT_MAX = 0.23236677428018998
+ROOT = 'results-left-turn-normalized'
+CBF_PATH = os.path.join(ROOT, 'trained_cbf.npy')
+ARGS_PATH = os.path.join(ROOT, 'args.json')
+META_DATA_PATH = os.path.join(ROOT, 'meta_data.json')
 
 def main():
 
+    args_dict = load_json(ARGS_PATH)
+    meta_data = load_json(META_DATA_PATH)
+
     net = hk.without_apply_rng(hk.transform(lambda x: net_fn()(x)))
-    with open(PATH, 'rb') as handle:
+    with open(CBF_PATH, 'rb') as handle:
         loaded_params = pickle.load(handle)
 
     learned_h = lambda x: jnp.sum(net.apply(loaded_params, x))
     zero_ctrl = get_zero_controller()
 
-    safe_ctrl = make_safe_controller(zero_ctrl, learned_h)
+    safe_ctrl = make_safe_controller(zero_ctrl, learned_h, args_dict, meta_data)
 
     # Example usage:
     u = safe_ctrl(jnp.array([1., 2., 3., 4.]), 1)
 
-def make_safe_controller(nominal_ctrl, h):
+def make_safe_controller(nominal_ctrl, h, args_dict, meta_data):
     """Create a safe controller using learned hybrid CBF."""
 
+    delta_f, delta_g = args_dict['delta_f'], args_dict['delta_g']
+    maxes = meta_data['normalizers']
+    T_x = jnp.diag(jnp.array([
+        maxes['cte'], maxes['speed'], maxes['theta_e'], maxes['d']
+    ]))
+
     dh = jax.grad(h, argnums=0)
-    dyn = CarlaDynamics()
+    dyn = CarlaDynamics(T_x)
     alpha = lambda x : x
     norm = lambda x : jnp.linalg.norm(x)
     cpnorm = lambda x : cp.norm(x)
@@ -51,13 +56,11 @@ def make_safe_controller(nominal_ctrl, h):
 
         cte, v, θ_e, d_var = x
         x = jnp.array([
-            cte / CTE_MAX, 
-            v / SPEED_MAX, 
-            θ_e / THETA_E_MAX, 
-            d_var / D_MAX
-        ]).reshape(x.shape)
-
-        d /= DTHETA_T_MAX
+            cte / float(maxes['cte']), 
+            v / float(maxes['speed']), 
+            θ_e / float(maxes['theta_e']), 
+            d_var / float(maxes['d'])
+        ]).reshape(4,)
 
         # compute action used by nominal controller
         u_nom = nominal_ctrl(x)
@@ -66,7 +69,7 @@ def make_safe_controller(nominal_ctrl, h):
         u_mod = cp.Variable(len(u_nom))
         obj = cp.Minimize(cp.sum_squares(u_mod - u_nom))
         constraints = [
-            dot(dh(x), dyn.f(x, d)) + u_mod.T @ dot(dyn.g(x).T, dh(x)) + alpha(h(x)) - norm(dh(x)) * (DELTA_F + DELTA_G * cpnorm(u_mod)) >= 0
+            dot(dh(x), dyn.f(x, d)) + u_mod.T @ dot(dyn.g(x).T, dh(x)) + alpha(h(x)) - norm(dh(x)) * (delta_f + delta_g * cpnorm(u_mod)) >= 0
         ]
         
         prob = cp.Problem(obj, constraints)
@@ -92,6 +95,11 @@ def get_zero_controller():
     """Returns a zero controller"""
 
     return lambda state: jnp.array([0.])
+
+def load_json(fname):
+    with open(fname) as json_file:
+        data = json.load(json_file)
+    return data
 
 if __name__ == '__main__':
     main()

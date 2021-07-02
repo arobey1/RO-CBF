@@ -12,9 +12,7 @@ from core.utils.parse_args import parse_args
 from core.utils.viz import Visualizer
 from core.data.load import load_data, load_data_v2
 from core.losses.new_cbf_loss import CBFLoss
-
 from core.output_maps.pos_to_velocity import PosToVelocity
-
 from core.dynamics.carla_4state import CarlaDynamics
 
 def main(args):
@@ -66,8 +64,6 @@ def main(args):
                 dual_vars[key] = jnn.relu(dv + args.dual_step_size * jnp.sum(diffs[key]))
             else:
                 dual_vars[key] = jnn.relu(dv + args.dual_step_size * diffs[key].squeeze())
-
-        # PrimalDualLoss.loss_fn(params, data_dict)
 
         if step % 100 == 0:
             print(f'Step: {step}/{args.n_epochs}')
