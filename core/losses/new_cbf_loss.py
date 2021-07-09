@@ -6,12 +6,13 @@ from functools import partial
 
 class CBFLoss:
 
-    def __init__(self, hparams, network, dynamics, alpha, dual_vars):
+    def __init__(self, hparams, network, dynamics, alpha, dual_vars, T_x):
         self._hparams = hparams
         self._network = network
         self._dynamics = dynamics
         self._alpha = alpha
         self._dual_vars = dual_vars
+        self._norm_T_x = 1.0 #jnp.linalg.norm(T_x)
 
     @partial(jax.jit, static_argnums=0)
     def cbf_term(self, params, states, disturbances, inputs):
@@ -46,7 +47,7 @@ class CBFLoss:
             cbf_term_ = term1 + term2
 
             if self._hparams.robust is True:
-                multiplier = self._hparams.delta_f + self._hparams.delta_g * jnp.linalg.norm(u)
+                multiplier = self._norm_T_x * (self._hparams.delta_f + self._hparams.delta_g * jnp.linalg.norm(u))
                 cbf_term_ -= jnp.linalg.norm(dh) * multiplier
 
             if self._hparams.use_lip_output_term is True:

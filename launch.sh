@@ -32,12 +32,12 @@ export DATA_PATH_10="${RIGHT_ROOT}/quarter_of_turn/gridding/${RIGHT_FNAME}_2.pd"
 # (right) start of turn
 export DATA_PATH_11="${RIGHT_ROOT}/start_of_turn/gridding/${RIGHT_FNAME}_1.pd"
 
-export RESULTS_PATH='./results-left-turn-normalized'
+export RESULTS_PATH='./results-no-norm-all-data'
 
 # Margins for optimization constraints 
-export GAMMA_SAFE=0.3
-export GAMMA_UNSAFE=0.3
-export GAMMA_DYN=0.05
+export GAMMA_SAFE=0.2
+export GAMMA_UNSAFE=0.25
+export GAMMA_DYN=0.075
 
 # Lagrange multipliers (fixed)
 export LAMBDA_GRAD=0.01
@@ -45,8 +45,8 @@ export LAMBDA_PARAM=0.01
 
 # Robustness
 export LAMBDA_ROBUST=0.6
-export DELTA_F=1.0
-export DELTA_G=1.0
+export DELTA_F=0.75
+export DELTA_G=0.75
 
 # Lipschitz output term
 export LIP_OUTPUT_TERM=0.1
@@ -64,11 +64,7 @@ export DUAL_SCHEME='ae'
 # Boundary/Unsafe state sampling
 
 # For estimated data
-# export NEIGHBOR_THRESH=0.07
-# export MIN_N_NEIGHBORS=200
-
-# For clean data
-# export NEIGHBOR_THRESH=0.045
+# export NEIGHBOR_THRESH=0.2
 # export MIN_N_NEIGHBORS=200
 
 # For clean data with data aug
@@ -78,14 +74,15 @@ export MIN_N_NEIGHBORS=200
 # Additional state sampling
 export N_SAMP_UNSAFE=0
 export N_SAMP_SAFE=0
-export N_SAMP_ALL=0
+export N_SAMP_ALL=1
 
-# $DATA_PATH_10 $DATA_PATH_11
+#  
+#     
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=3
 python main.py \
     --system $SYSTEM --data-path $DATA_PATH_1 $DATA_PATH_2 $DATA_PATH_3 $DATA_PATH_4 \
-    $DATA_PATH_5 $DATA_PATH_6 $DATA_PATH_7 $DATA_PATH_8 $DATA_PATH_9  \
+    $DATA_PATH_5 $DATA_PATH_6 $DATA_PATH_7 $DATA_PATH_8 $DATA_PATH_9 $DATA_PATH_10 $DATA_PATH_11 \
     --results-path $RESULTS_PATH \
     --gamma-safe $GAMMA_SAFE --gamma-unsafe $GAMMA_UNSAFE --gamma-dyn $GAMMA_DYN \
     --lambda-grad $LAMBDA_GRAD --lambda-param $LAMBDA_PARAM \
@@ -94,7 +91,6 @@ python main.py \
     --nbr-thresh $NEIGHBOR_THRESH --min-n-nbrs $MIN_N_NEIGHBORS \
     --n-samp-unsafe $N_SAMP_UNSAFE --n-samp-safe $N_SAMP_SAFE --n-samp-all $N_SAMP_ALL \
     --dual-scheme $DUAL_SCHEME \
-    --robust --lambda-robust $LAMBDA_ROBUST --delta-f $DELTA_F --delta-g $DELTA_G \
-    --normalize-state
-    # --n-samp-all 1
+    --robust --lambda-robust $LAMBDA_ROBUST --delta-f $DELTA_F --delta-g $DELTA_G
+    # --normalize-state
     # --use-lip-output-term --lip-output-term $LIP_OUTPUT_TERM

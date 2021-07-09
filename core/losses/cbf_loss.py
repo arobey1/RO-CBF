@@ -115,6 +115,7 @@ class CBFLoss:
         def grad_indiv(x):
             scalar_network = lambda x_ : jnp.sum(self._network.apply(params, x_))
             return jax.grad(scalar_network)(x)
+            
         grad_all_output = jax.vmap(grad_indiv, in_axes=(0))(data_dict['all'])
         losses['grad'] = self._hparams.lambda_grad * jnp.sum(jnp.square(grad_all_output))
 
