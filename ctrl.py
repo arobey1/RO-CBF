@@ -35,9 +35,10 @@ def make_safe_controller(nominal_ctrl, h, args_dict, meta_data):
 
     delta_f, delta_g = args_dict['delta_f'], args_dict['delta_g']
     maxes = meta_data['normalizers']
-    T_x = jnp.diag(jnp.array([
-        maxes['cte'], maxes['speed'], maxes['theta_e'], maxes['d']
-    ]))
+    # T_x = jnp.diag(jnp.array([
+    #     maxes['cte'], maxes['speed'], maxes['theta_e'], maxes['d']
+    # ]))
+    T_x = jnp.eye(4)
 
     dh = jax.grad(h, argnums=0)
     dyn = CarlaDynamics(T_x)
@@ -55,12 +56,12 @@ def make_safe_controller(nominal_ctrl, h, args_dict, meta_data):
         """
 
         cte, v, θ_e, d_var = x
-        x = jnp.array([
-            cte / float(maxes['cte']), 
-            v / float(maxes['speed']), 
-            θ_e / float(maxes['theta_e']), 
-            d_var / float(maxes['d'])
-        ]).reshape(4,)
+        # x = jnp.array([
+        #     cte / float(maxes['cte']), 
+        #     v / float(maxes['speed']), 
+        #     θ_e / float(maxes['theta_e']), 
+        #     d_var / float(maxes['d'])
+        # ]).reshape(4,)
 
         # compute action used by nominal controller
         u_nom = nominal_ctrl(x)
