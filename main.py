@@ -86,6 +86,8 @@ def main(args):
                 wandb.log({f'{key} dual var': dual_vars[key].item() for key in dual_vars.keys()})
 
             viz.state_separation(params)
+            viz.single_level_set(params)
+            viz.level_sets(params)
 
             fname = os.path.join(args.results_path, 'trained_cbf.npy')
             with open(fname, 'wb') as handle:
