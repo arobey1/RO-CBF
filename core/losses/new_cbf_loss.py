@@ -16,24 +16,6 @@ class CBFLoss:
 
     @partial(jax.jit, static_argnums=0)
     def cbf_term(self, params, states, disturbances, inputs):
-        """Computes the LHS of the CBF inequality term with sup over the l_inf ball.
-        
-            sup_{||u||_inf <= 1} <dh(x), f(x) + g(x)u> + alpha(h(x)) 
-                = <dh(x), f(x)> + ||dh(x).T g(x)||_1 + alpha(h(x))
-            
-        If self._hparams.robust True, we subtract the robustness term
-        
-            - lambda_robust * ||dh(x)||_2
-
-        from the CBF LHS expression.
-
-        Args:
-            params: parameters of neural network h(x).
-            states: states on which we evaluate the CBF inequality LHS.
-
-        Returns:
-            LHS of CBF inequality with optional robustness term.
-        """
 
         def cbf_term_indiv(data):
 
