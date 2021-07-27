@@ -33,7 +33,7 @@ class CBFLoss:
                 cbf_term_ -= jnp.linalg.norm(dh) * multiplier
 
             if self._hparams.use_lip_output_term is True:
-                cbf_term_ -= self._hparams.lip_output_term
+                cbf_term_ -= self._hparams.lip_const_a + self._hparams.lip_const_b * jnp.linalg.norm(u)
 
             return cbf_term_
 
