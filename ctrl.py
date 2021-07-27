@@ -34,10 +34,8 @@ def make_safe_controller(nominal_ctrl, h, args_dict, meta_data):
     """Create a safe controller using learned hybrid CBF."""
 
     delta_f, delta_g = args_dict['delta_f'], args_dict['delta_g']
-    maxes = meta_data['normalizers']
-    # T_x = jnp.diag(jnp.array([
-    #     maxes['cte'], maxes['speed'], maxes['theta_e'], maxes['d']
-    # ]))
+    lip_const_a, lip_const_b = args_dict['lip_const_a'], args_dict['lip_const_b']
+    use_output_map = args_dict['use_lip_output_term']
     T_x = jnp.eye(4)
 
     dh = jax.grad(h, argnums=0)
@@ -56,12 +54,6 @@ def make_safe_controller(nominal_ctrl, h, args_dict, meta_data):
         """
 
         cte, v, θ_e, d_var = x
-        # x = jnp.array([
-        #     cte / float(maxes['cte']), 
-        #     v / float(maxes['speed']), 
-        #     θ_e / float(maxes['theta_e']), 
-        #     d_var / float(maxes['d'])
-        # ]).reshape(4,)
 
         # compute action used by nominal controller
         u_nom = nominal_ctrl(x)
@@ -69,9 +61,15 @@ def make_safe_controller(nominal_ctrl, h, args_dict, meta_data):
         # setup and solve HCBF-QP with CVXPY
         u_mod = cp.Variable(len(u_nom))
         obj = cp.Minimize(cp.sum_squares(u_mod - u_nom))
-        constraints = [
-            dot(dh(x), dyn.f(x, d)) + u_mod.T @ dot(dyn.g(x).T, dh(x)) + alpha(h(x)) - norm(dh(x)) * (delta_f + delta_g * cpnorm(u_mod)) >= 0
-        ]
+
+        if use_output_map is False:
+            constraints = [
+                dot(dh(x), dyn.f(x, d)) + u_mod.T @ dot(dyn.g(x).T, dh(x)) + alpha(h(x)) - norm(dh(x)) * (delta_f + delta_g * cpnorm(u_mod)) >= 0
+            ]
+        else:
+            constraints = [
+                dot(dh(x), dyn.f(x, d)) + u_mod.T @ dot(dyn.g(x).T, dh(x)) + alpha(h(x)) - norm(dh(x)) * (delta_f + delta_g * cpnorm(u_mod)) - (lip_const_a + lip_const_b * cpnorm(u_mod)) >= 0
+            ]
         
         prob = cp.Problem(obj, constraints)
         prob.solve(solver=cp.SCS, verbose=True, max_iters=20000, eps=1e-10)

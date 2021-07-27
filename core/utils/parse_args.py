@@ -27,8 +27,6 @@ def parse_args():
     # Robustness term
     parser.add_argument('--robust', action='store_true',
                             help='Adds the robustness term to the CBF inequality.')
-    parser.add_argument('--lambda-robust', type=float, default=0.25,
-                            help='Weight on robustness term (Delta_W in paper).')
     parser.add_argument('--delta-f', type=float, default=0.4, 
                             help='Robutness constant (Delta_F in the paper).')
     parser.add_argument('--delta-g', type=float, default=0.3, 
@@ -37,8 +35,10 @@ def parse_args():
     # Lipschitz term for output map
     parser.add_argument('--use-lip-output-term', action='store_true',
                             help='Adds the lipschitz term to the CBF inequality.')
-    parser.add_argument('--lip-output-term', type=float, default=0.1,
-                            help='Lipschitz term (Lip_B(\Delta)_X(y) in the paper')
+    parser.add_argument('--lip-const-a', type=float, default=0.2,
+                            help='Robustness term L_1 for output map.')
+    parser.add_argument('--lip-const-b', type=float, default=0.2,
+                            help='Robustness term L_2 for output map.')
 
     # Data augmentation (synthetic right turns)
     parser.add_argument('--data-augmentation', action='store_true',
