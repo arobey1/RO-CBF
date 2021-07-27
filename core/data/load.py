@@ -20,6 +20,9 @@ def load_data_v2(args, output_map=None):
     dfs = [pd.read_pickle(path) for path in args.data_path]
     df = dfs[0] if len(dfs) == 1 else pd.concat(dfs, ignore_index=True)
 
+    # clip some outliers
+    df = df[df['theta_e'] <= 1.0]
+
     if output_map is None:
         state_cols = ['cte', 'speed(m/s)', 'theta_e', 'd']
     else:
@@ -62,7 +65,7 @@ def load_data_v2(args, output_map=None):
 
     n_all = len(df.index)
     # get_bdy_states_v2(df, state_cols, args.nbr_thresh, args.min_n_nbrs)
-    get_bdy_states_rknn(df, state_cols, 200, args.min_n_nbrs)
+    get_bdy_states_rknn(df, state_cols, 200)
 
     if args.n_samp_all != 0:
         df_copy = df.copy()
@@ -95,7 +98,7 @@ def load_data_v2(args, output_map=None):
 
 
 
-def get_bdy_states_rknn(df, state_cols, k, min_num_nbrs):
+def get_bdy_states_rknn(df, state_cols, k):
     """Implementation of RkNN for identifying boundary points."""
 
     # this is the data matrix -- should be [N, STATE_DIM]
@@ -118,7 +121,7 @@ def get_bdy_states_rknn(df, state_cols, k, min_num_nbrs):
     # flattened array.  This should give us a list of size [1, N]
     counts = np.bincount(flat_inds)
 
-    pct_unsafe = 0.2
+    pct_unsafe = 0.4
     nbr_thresh = np.quantile(counts, pct_unsafe)
 
     # threshold the counts 
