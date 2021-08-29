@@ -1,0 +1,25 @@
+{
+  "normalizers": {
+    "cte": 3.0805832065018324,
+    "speed": 5.843566157172131,
+    "theta_e": 0.43861233077287953,
+    "d": 20.1685078066237
+  },
+  "pct_safe": 61.32878121250215,
+  "pct_unsafe": 38.67121878749786,
+  "num-expert-states": {
+    "all": 350020,
+    "safe": 214663,
+    "unsafe": 135357
+  },
+  "num-samp-states": {
+    "all": 0,
+    "safe": 0,
+    "unsafe": 0
+  },
+  "num-total-states": {
+    "all": 350020,
+    "safe": 214663,
+    "unsafe": 135357
+  }
+}
