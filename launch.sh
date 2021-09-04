@@ -32,11 +32,11 @@ export DATA_PATH_10="${RIGHT_ROOT}/quarter_of_turn/gridding/${RIGHT_FNAME}_2.pd"
 # (right) start of turn
 export DATA_PATH_11="${RIGHT_ROOT}/start_of_turn/gridding/${RIGHT_FNAME}_1.pd"
 
-export RESULTS_PATH='./results-more-unsafe-states'
+export RESULTS_PATH='./results-tmp'
 
 # Margins for optimization constraints 
-export GAMMA_SAFE=0.05
-export GAMMA_UNSAFE=0.05
+export GAMMA_SAFE=0.3
+export GAMMA_UNSAFE=0.3
 export GAMMA_DYN=0.01
 
 # Lagrange multipliers (fixed)
@@ -53,7 +53,7 @@ export LIP_CONST_2=0.2
 
 # Training
 export NET_DIMS=(32 16)
-export N_EPOCHS=50000
+export N_EPOCHS=2000
 export LEARNING_RATE=0.005
 export DUAL_STEP_SIZE=0.05
 export DUAL_SCHEME='ae'
@@ -82,6 +82,6 @@ python main.py \
     --nbr-thresh $NEIGHBOR_THRESH --min-n-nbrs $MIN_N_NEIGHBORS \
     --n-samp-unsafe $N_SAMP_UNSAFE --n-samp-safe $N_SAMP_SAFE --n-samp-all $N_SAMP_ALL \
     --dual-scheme $DUAL_SCHEME \
-    --robust --delta-f $DELTA_F --delta-g $DELTA_G
-    # --use-lip-output-term --lip-const-a $LIP_CONST_1 --lip-const-b $LIP_CONST_2
+    --robust --delta-f $DELTA_F --delta-g $DELTA_G \
+    --use-lip-output-term --lip-const-a $LIP_CONST_1 --lip-const-b $LIP_CONST_2
     
