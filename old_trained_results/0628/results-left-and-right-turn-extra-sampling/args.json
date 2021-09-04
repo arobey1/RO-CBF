@@ -1,0 +1,42 @@
+{
+  "gamma_safe": 0.5,
+  "gamma_unsafe": 0.5,
+  "gamma_dyn": 0.2,
+  "lambda_grad": 0.01,
+  "lambda_param": 0.01,
+  "robust": true,
+  "lambda_robust": 0.6,
+  "delta_f": 1.0,
+  "delta_g": 1.0,
+  "use_lip_output_term": false,
+  "lip_output_term": 0.1,
+  "data_augmentation": false,
+  "results_path": "./results-left-and-right-turn-extra-sampling",
+  "data_path": [
+    "./data/carla/left_turn_state_space_sampling/middle_of_turn/gridding/Data_Collection_Compiled_sample_state_space_5.pd",
+    "./data/carla/left_turn_state_space_sampling/middle_of_turn/random_sampling/Data_Collection_Compiled_sample_state_space_9.pd",
+    "./data/carla/left_turn_state_space_sampling/quarter_of_turn/gridding/Data_Collection_Compiled_sample_state_space_4.pd",
+    "./data/carla/left_turn_state_space_sampling/Start_of_Turn/gridding/Data_Collection_Compiled_sample_state_space_3.pd",
+    "./data/carla/left_turn_state_space_sampling/Start_of_Turn/random_sampling/Data_Collection_Compiled_sample_state_space_7.pd",
+    "./data/carla/left_turn_state_space_sampling/Straight_Lane_Driving/gridding/Data_Collection_Compiled_sample_state_space_1.pd",
+    "./data/carla/left_turn_state_space_sampling/Straight_Lane_Driving/gridding/Data_Collection_Compiled_sample_state_space_2.pd",
+    "./data/carla/left_turn_state_space_sampling/Straight_Lane_Driving/random_sampling/Data_Collection_Compiled_sample_state_space_8.pd",
+    "./data/carla/left_turn_state_space_sampling/third_quarter_turn/gridding/Data_Collection_Compiled_sample_state_space_6.pd",
+    "./data/carla/right_turn_state_space_sampling/quarter_of_turn/gridding/Data_Collection_Compiled_reverse_sample_state_space_2.pd",
+    "./data/carla/right_turn_state_space_sampling/start_of_turn/gridding/Data_Collection_Compiled_reverse_sample_state_space_1.pd"
+  ],
+  "system": "carla",
+  "net_dims": [
+    32,
+    16
+  ],
+  "n_epochs": 50000,
+  "learning_rate": 0.005,
+  "dual_step_size": 0.05,
+  "dual_scheme": "ae",
+  "nbr_thresh": 0.01,
+  "min_n_nbrs": 200,
+  "n_samp_unsafe": 0,
+  "n_samp_safe": 0,
+  "n_samp_all": 1
+}

@@ -1,0 +1,19 @@
+{
+  "pct_safe": 40.907874829329494,
+  "pct_unsafe": 59.092125170670506,
+  "num-expert-states": {
+    "all": 433584,
+    "safe": 177370,
+    "unsafe": 256214
+  },
+  "num-samp-states": {
+    "all": 0,
+    "safe": 0,
+    "unsafe": 0
+  },
+  "num-total-states": {
+    "all": 433584,
+    "safe": 177370,
+    "unsafe": 256214
+  }
+}
