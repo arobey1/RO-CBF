@@ -13,6 +13,7 @@ from core.utils.viz import Visualizer
 from core.data.load import load_data_v2
 from core.losses.new_cbf_loss import CBFLoss
 from core.output_maps.pos_to_velocity import PosToVelocity
+from core.output_maps.img_to_cte import ImgToCTE
 from core.dynamics.carla_4state import CarlaDynamics
 
 def main(args):
@@ -22,13 +23,13 @@ def main(args):
     config.n_epochs = args.n_epochs
     config.learning_rate = args.learning_rate
     config.dual_step_size = args.dual_step_size
-    config.nbr_thresh = args.nbr_thresh
-    config.min_n_nbrs = args.min_n_nbrs
 
     key_seq = hk.PRNGSequence(23)
     
     # output_map = PosToVelocity()
-    data_dict, T_x = load_data_v2(args, output_map=None)
+    output_map = ImgToCTE()
+
+    data_dict, T_x = load_data_v2(args, output_map=output_map)
     alpha = lambda x : x
     dual_vars = init_dual_vars(args, data_dict)
 
@@ -52,6 +53,7 @@ def main(args):
 
         # primal step
         loss, grad = jax.value_and_grad(PrimalDualLoss.loss_fn)(params, data_dict)
+        
         updates, opt_state = opt_update(grad, opt_state, params)
         params = optax.apply_updates(params, updates)
 
