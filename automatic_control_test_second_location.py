@@ -715,6 +715,18 @@ def game_loop(args):
     list_feasible = []
     list_g = []
 
+    args_dict = load_json(ARGS_PATH)
+    meta_data = load_json(META_DATA_PATH)
+
+    net = hk.without_apply_rng(hk.transform(lambda x: net_fn()(x)))
+    with open(CBF_PATH, 'rb') as handle:
+        loaded_params = pickle.load(handle)
+
+    def learned_h(x): return jnp.sum(net.apply(loaded_params, x))
+    zero_ctrl = get_zero_controller()
+
+    safe_ctrl = make_safe_controller(zero_ctrl, learned_h, args_dict, meta_data)
+
     pygame.init()
     pygame.font.init()
     world = None
@@ -820,18 +832,6 @@ def game_loop(args):
             dot_phi_t = diff_theta_waypoint * v / \
                 np.linalg.norm(np.array([waypoint_vector_x, waypoint_vector_y]))
             # get the control from the learned controller
-            args_dict = load_json(ARGS_PATH)
-            meta_data = load_json(META_DATA_PATH)
-
-            net = hk.without_apply_rng(hk.transform(lambda x: net_fn()(x)))
-            with open(CBF_PATH, 'rb') as handle:
-                loaded_params = pickle.load(handle)
-
-            def learned_h(x): return jnp.sum(net.apply(loaded_params, x))
-            zero_ctrl = get_zero_controller()
-
-            safe_ctrl = make_safe_controller(zero_ctrl, learned_h, args_dict, meta_data)
-
             # steering_wheel_input, h, h_dire, g = safe_ctrl(jnp.array([cte, v, theta_e, d]), dot_phi_t)
             steering_wheel_input, h, h_dire, feasible = safe_ctrl(jnp.array([cte, v, theta_e, d]), dot_phi_t)
             control.steer = np.arctan(steering_wheel_input[0]) / 70 * 180 / PI

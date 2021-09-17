@@ -1,0 +1,36 @@
+{
+  "gamma_safe": 0.3,
+  "gamma_unsafe": 0.3,
+  "gamma_dyn": 0.01,
+  "lambda_grad": 0.01,
+  "lambda_param": 0.01,
+  "robust": true,
+  "delta_f": 0.5,
+  "delta_g": 0.5,
+  "use_lip_output_term": true,
+  "lip_const_a": 0.2,
+  "lip_const_b": 0.2,
+  "data_augmentation": false,
+  "normalize_state": false,
+  "results_path": "./results-cte",
+  "data_path": [
+    "./data/carla/images/Dataset_with_image/left_turn_state_space_sampling/random_noise_driving/Data_Collection_Compiled.pd",
+    "./data/carla/images/Dataset_with_image/left_turn_state_space_sampling/straight_lane_driving/Data_Collection_Compiled.pd",
+    "./data/carla/images/Dataset_with_image/left_turn_state_space_sampling/start_of_turn/Data_Collection_Compiled.pd",
+    "./data/carla/images/Dataset_with_image/left_turn_state_space_sampling/middle_of_turn/Data_Collection_Compiled.pd"
+  ],
+  "system": "carla",
+  "net_dims": [
+    32,
+    16
+  ],
+  "n_epochs": 2000,
+  "learning_rate": 0.005,
+  "dual_step_size": 0.05,
+  "dual_scheme": "ae",
+  "nbr_thresh": 0.008,
+  "min_n_nbrs": 200,
+  "n_samp_unsafe": 0,
+  "n_samp_safe": 0,
+  "n_samp_all": 0
+}

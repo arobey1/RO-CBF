@@ -2,6 +2,8 @@
 
 # Copyright (c) 2018 Intel Labs.
 # authors: German Ros (german.ros@intel.com)
+
+# inplace update
 #
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
@@ -32,7 +34,11 @@ from core.dynamics.carla_4state import CarlaDynamics
 from core.output_maps.img_to_cte import ImgToCTE, OutputMapDataset
 import matplotlib.pyplot as plt
 from ctrl import *
+import gc
 
+os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
+# os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.40'
+os.environ['XLA_PYTHON_CLIENT_ALLOCATOR'] = 'platform'
 try:
     import pygame
     from pygame.locals import KMOD_CTRL
@@ -682,10 +688,12 @@ class CameraManager(object):
             array = np.reshape(array, (image.height, image.width, 4))
             array = array[:, :, :3]
             array = array[:, :, ::-1]
-            front_camera_image = array
+            del front_camera_image
+            # gc.collect()
+            front_camera_image = deepcopy(array)
             self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
-        if self.recording:
-            image.save_to_disk('_out/%08d' % image.frame)
+        # if self.recording:
+        #     image.save_to_disk('_out/%08d' % image.frame)
 
 # ==============================================================================
 # -- Game Loop ---------------------------------------------------------
@@ -750,7 +758,12 @@ def game_loop(args):
         # world = World(client.get_world(), hud, args)
         world = World(client.load_world('Town06'), hud, args,
                       initial_position_array[0], initial_position_array[1], initial_position_array[2])
+        # settings = world.world.get_settings()
+        # settings.synchronous_mode = True
+        # settings.fixed_delta_seconds = 0.05
+        # world.world.apply_settings(settings)
         controller = KeyboardControl(world)
+        img_to_cte = ImgToCTE()
 
         agent = RoamingAgent(world.player)
 
@@ -762,29 +775,22 @@ def game_loop(args):
                 return
 
             # As soon as the server is ready continue!
-            if not world.world.wait_for_tick(10.0):
+            if not world.world.wait_for_tick(100.0):
                 continue
 
             if controller.parse_events(client, world, clock):
                 return
 
             # as soon as the server is ready continue!
-            world.world.wait_for_tick(10.0)
+            world.world.wait_for_tick(100.0)
 
             world.tick(clock)
+            # world.world.tick()
             world.render(display)
             pygame.display.flip()
 
-            last_control = world.player.get_control()
-            acceleration = world.player.get_acceleration()
             velocity = world.player.get_velocity()
             location = world.player.get_transform()  # need to modify to the rear axles
-            target_speed = agent._local_planner._target_speed
-            target_waypoint = agent._local_planner.target_waypoint
-            # x_rear_wheel = (world.player.get_physics_control(
-            # ).wheels[2].position.x + world.player.get_physics_control().wheels[3].position.x) / 200
-            # y_rear_wheel = (world.player.get_physics_control(
-            # ).wheels[2].position.y + world.player.get_physics_control().wheels[3].position.y) / 200
             x_rear_wheel = location.location.x - 1.26 * math.cos(location.rotation.yaw / 180 * PI)
             y_rear_wheel = location.location.y - 1.26 * math.sin(location.rotation.yaw / 180 * PI)
 
@@ -796,9 +802,6 @@ def game_loop(args):
             waypoint = [x_map[index_tp + 500], y_map[index_tp + 500]]
 
             control, _ie = agent.run_step(waypoint)
-            # print(control)
-
-            # control.steer = kp * control.steer
 
             control.manual_gear_shift = True
             control.gear = 3
@@ -865,10 +868,8 @@ def game_loop(args):
                 np.linalg.norm(np.array([waypoint_vector_x, waypoint_vector_y]))
 
             # get the parameters for the learned controller
-            img_to_cte = ImgToCTE()
             cte_es = img_to_cte.predict(np.expand_dims(OutputMapDataset.normalize(
                 deepcopy(front_camera_image)), axis=0).astype(np.float32))
-            print(cte_es)
             steering_wheel_input, h, h_dire, feasible = safe_ctrl(jnp.array([cte_es[0, 0], v, theta_e, d]), dot_phi_t)
             control.steer = np.arctan(steering_wheel_input[0]) / 70 * 180 / PI
             list_cte.append(cte)

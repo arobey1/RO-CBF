@@ -8,7 +8,8 @@ import os
 
 from core.dynamics.carla_4state import CarlaDynamics
 
-ROOT = 'old_trained_results/0720/results-less-robust-low-margins-all-data/'
+# ROOT = 'old_trained_results/0720/results-less-robust-low-margins-all-data/'
+ROOT = 'old_trained_results/0904_output_map/results-cte/'
 CBF_PATH = os.path.join(ROOT, 'trained_cbf.npy')
 ARGS_PATH = os.path.join(ROOT, 'args.json')
 META_DATA_PATH = os.path.join(ROOT, 'meta_data.json')
@@ -37,6 +38,7 @@ def make_safe_controller(nominal_ctrl, h, args_dict, meta_data):
 
     delta_f, delta_g = args_dict['delta_f'], args_dict['delta_g']
     lip_const_a, lip_const_b = args_dict['lip_const_a'], args_dict['lip_const_b']
+    use_output_map = False
     use_output_map = args_dict['use_lip_output_term']
 
     T_x = jnp.eye(4)
@@ -67,13 +69,15 @@ def make_safe_controller(nominal_ctrl, h, args_dict, meta_data):
 
         if use_output_map is False:
             constraints = [
-                dot(dh(x), dyn.f(x, d)) + u_mod.T @ dot(dyn.g(x).T, dh(x)) + alpha(h(x)) - norm(dh(x)) * (delta_f + delta_g * cpnorm(u_mod)) >= 0
+                dot(dh(x), dyn.f(x, d)) + u_mod.T @ dot(dyn.g(x).T, dh(x)) +
+                alpha(h(x)) - norm(dh(x)) * (delta_f + delta_g * cpnorm(u_mod)) >= 0
             ]
         else:
             constraints = [
-                dot(dh(x), dyn.f(x, d)) + u_mod.T @ dot(dyn.g(x).T, dh(x)) + alpha(h(x)) - norm(dh(x)) * (delta_f + delta_g * cpnorm(u_mod)) - (lip_const_a + lip_const_b * cpnorm(u_mod)) >= 0
+                dot(dh(x), dyn.f(x, d)) + u_mod.T @ dot(dyn.g(x).T, dh(x)) + alpha(h(x)) - norm(dh(x)) *
+                (delta_f + delta_g * cpnorm(u_mod)) - (lip_const_a + lip_const_b * cpnorm(u_mod)) >= 0
             ]
-        
+
         prob = cp.Problem(obj, constraints)
         prob.solve(solver=cp.SCS, verbose=False, max_iters=20000, eps=1e-10)
 

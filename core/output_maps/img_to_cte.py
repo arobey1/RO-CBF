@@ -13,6 +13,7 @@ import jax
 
 from core.data.images import NumpyLoader
 
+
 class ImgToCTE:
     def __init__(self):
 
@@ -24,7 +25,7 @@ class ImgToCTE:
         return ['cte_est', 'speed(m/s)', 'theta_e', 'd']
 
     def map(self, df):
-        
+
         image_dataset = OutputMapDataset(df)
         loader = NumpyLoader(image_dataset, batch_size=64)
 
@@ -49,7 +50,7 @@ class ImgToCTE:
 
     @staticmethod
     def load_checkpoint():
-        dirname = 'perception-ckpts'
+        dirname = 'old_trained_results/0904_output_map/perception-ckpts'
         with open(os.path.join(dirname, 'params.npy'), 'rb') as f:
             params = pickle.load(f)
         with open(os.path.join(dirname, 'nn_state.npy'), 'rb') as f:
@@ -57,10 +58,11 @@ class ImgToCTE:
 
         return params, nn_state
 
+
 class OutputMapDataset(Dataset):
 
     MEAN_IMG = [142.30428901, 142.93909777, 125.39351831]
-    STD_IMG = [58.4192335,  53.82467569, 61.2449872]
+    STD_IMG = [58.4192335, 53.82467569, 61.2449872]
 
     def __init__(self, df):
         self.images = np.stack(df['front_camera_image'].to_numpy(), axis=0)
@@ -75,4 +77,13 @@ class OutputMapDataset(Dataset):
         image = image.astype(np.float32)
         image -= np.array(self.MEAN_IMG, dtype=np.float32).reshape(1, 1, 3)
         image /= np.array(self.STD_IMG, dtype=np.float32).reshape(1, 1, 3)
+        return image
+
+    @staticmethod
+    def normalize(image):
+        MEAN_IMG = [142.30428901, 142.93909777, 125.39351831]
+        STD_IMG = [58.4192335, 53.82467569, 61.2449872]
+        image = image.astype(np.float32)
+        image -= np.array(MEAN_IMG, dtype=np.float32).reshape(1, 1, 3)
+        image /= np.array(STD_IMG, dtype=np.float32).reshape(1, 1, 3)
         return image

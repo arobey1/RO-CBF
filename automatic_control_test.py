@@ -30,7 +30,10 @@ import haiku as hk
 import pickle
 from core.dynamics.carla_4state import CarlaDynamics
 import matplotlib.pyplot as plt
-from ctrl import *
+from ctrl_state_based_cbf import *
+
+os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
+os.environ['TF_FORCE_UNIFIED_MEMORY'] = '1'
 
 try:
     import pygame
@@ -701,13 +704,15 @@ def game_loop(args):
 
     tot_target_reached = 0
     num_min_waypoints = 21
-    initial_positions = np.load('carla/initial_positions.npz')
-    initial_position_array = initial_positions['arr_0']
-    print(initial_position_array.shape)
     npzfile = np.load("carla/map_shifted_waypoints.npz")
     x_map = npzfile['arr_0']
     y_map = npzfile['arr_1']
     waypoints_map = npzfile['arr_2']
+    i = 0  # 20000 # 7000 # 13500
+    initial_position_array = np.zeros((3, ))
+    initial_position_array[0] = waypoints_map[i, 0]
+    initial_position_array[1] = waypoints_map[i, 1]
+    initial_position_array[2] = 180
     list_cte = []
     list_theta_e = []
     list_dot_phit = []
@@ -717,6 +722,19 @@ def game_loop(args):
     list_h_dire_2 = []
     list_feasible = []
     list_g = []
+
+    args_dict = load_json(ARGS_PATH)
+    meta_data = load_json(META_DATA_PATH)
+
+    net = hk.without_apply_rng(hk.transform(lambda x: net_fn()(x)))
+    with open(CBF_PATH, 'rb') as handle:
+        loaded_params = pickle.load(handle)
+
+    # 0.03 making h more robust
+    def learned_h(x): return jnp.sum(net.apply(loaded_params, x)) - 0.03
+    zero_ctrl = get_zero_controller()
+
+    safe_ctrl = make_safe_controller(zero_ctrl, learned_h, args_dict, meta_data)
 
     # loop for 107 starting points
     for i in range(0, 107):
@@ -735,7 +753,7 @@ def game_loop(args):
             hud = HUD(args.width, args.height)
             # world = World(client.get_world(), hud, args)
             world = World(client.load_world('Town06'), hud, args,
-                          initial_position_array[0, i], initial_position_array[1, i] - 0.14, initial_position_array[2, i])
+                          initial_position_array[0], initial_position_array[1], initial_position_array[2])
             controller = KeyboardControl(world)
 
             agent = RoamingAgent(world.player)
@@ -826,23 +844,10 @@ def game_loop(args):
                     np.linalg.norm(np.array([waypoint_vector_x, waypoint_vector_y]))
 
                 # get the parameters for the learned controller
-                args_dict = load_json(ARGS_PATH)
-                meta_data = load_json(META_DATA_PATH)
-
-                net = hk.without_apply_rng(hk.transform(lambda x: net_fn()(x)))
-                with open(CBF_PATH, 'rb') as handle:
-                    loaded_params = pickle.load(handle)
-
-                # 0.03 making h more robust
-                def learned_h(x): return jnp.sum(net.apply(loaded_params, x)) - 0.03
-                zero_ctrl = get_zero_controller()
-
-                safe_ctrl = make_safe_controller(zero_ctrl, learned_h, args_dict, meta_data)
-
                 # steering_wheel_input, h, h_dire, g = safe_ctrl(jnp.array([cte, v, theta_e, d]), dot_phi_t)
                 steering_wheel_input, h, h_dire, feasible = safe_ctrl(jnp.array([cte, v, theta_e, d]), dot_phi_t)
                 control.steer = np.arctan(steering_wheel_input[0]) / 70 * 180 / PI
-                list_cte.append(cte + 0.8)
+                list_cte.append(cte)
                 list_theta_e.append(theta_e)
                 list_dot_phit.append(dot_phi_t)
                 list_steer.append(control.steer)
