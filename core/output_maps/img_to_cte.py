@@ -50,7 +50,7 @@ class ImgToCTE:
 
     @staticmethod
     def load_checkpoint():
-        dirname = 'old_trained_results/0904_output_map/perception-ckpts'
+        dirname = '../old_trained_results/0904_output_map/perception-ckpts'
         with open(os.path.join(dirname, 'params.npy'), 'rb') as f:
             params = pickle.load(f)
         with open(os.path.join(dirname, 'nn_state.npy'), 'rb') as f:

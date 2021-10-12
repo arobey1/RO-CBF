@@ -8,7 +8,7 @@ import os
 
 from core.dynamics.carla_4state import CarlaDynamics
 
-ROOT = '../old_trained_results/0720/results-less-robust-low-margins-all-data/'
+ROOT = '../old_trained_results/0922/'
 CBF_PATH = os.path.join(ROOT, 'trained_cbf.npy')
 ARGS_PATH = os.path.join(ROOT, 'args.json')
 META_DATA_PATH = os.path.join(ROOT, 'meta_data.json')
@@ -36,9 +36,9 @@ def make_safe_controller(nominal_ctrl, h, args_dict, meta_data):
     """Create a safe controller using learned hybrid CBF."""
 
     delta_f, delta_g = args_dict['delta_f'], args_dict['delta_g']
-    # lip_const_a, lip_const_b = args_dict['lip_const_a'], args_dict['lip_const_b']
+    lip_const_a, lip_const_b = args_dict['lip_const_a'], args_dict['lip_const_b']
     use_output_map = False
-    # use_output_map = args_dict['use_lip_output_term']
+    use_output_map = args_dict['use_lip_output_term']
 
     T_x = jnp.eye(4)
 
