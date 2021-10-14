@@ -64,9 +64,7 @@ except IndexError:
 import carla
 from carla import ColorConverter as cc
 
-from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
 from agents.navigation.roaming_agent_customized import RoamingAgent  # pylint: disable=import-error
-from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
 
 # ==============================================================================
 # -- Set environment variables and define global variables ---------------------
