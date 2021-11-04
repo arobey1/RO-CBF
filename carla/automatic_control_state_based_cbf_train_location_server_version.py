@@ -49,9 +49,10 @@ try:
         sys.version_info.minor,
         'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
 except IndexError:
+    print("now")
     pass
 
-sys.path.append(glob.glob('../../../carla/dist/carla-0.9.9-py3.7-linux-x86_64.egg')[0])
+# sys.path.append(glob.glob('../../../carla/dist/carla-0.9.9-py3.7-linux-x86_64.egg')[0])
 
 # ==============================================================================
 # -- Add PythonAPI for release mode --------------------------------------------
