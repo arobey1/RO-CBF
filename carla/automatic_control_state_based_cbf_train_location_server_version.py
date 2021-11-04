@@ -52,7 +52,7 @@ except IndexError:
     print("now")
     pass
 
-# sys.path.append(glob.glob('../../../carla/dist/carla-0.9.9-py3.7-linux-x86_64.egg')[0])
+sys.path.append(glob.glob('../../../carla/dist/carla-0.9.9-py3.7-linux-x86_64.egg')[0])
 
 # ==============================================================================
 # -- Add PythonAPI for release mode --------------------------------------------
@@ -64,6 +64,8 @@ except IndexError:
 
 import carla
 from carla import ColorConverter as cc
+
+sys.path.append('../../../carla/')
 
 from agents.navigation.roaming_agent_customized import RoamingAgent  # pylint: disable=import-error
 
@@ -846,7 +848,7 @@ def game_loop(args):
             list_h_dire_2.append(h_dire[2] / 20)
             list_feasible.append(feasible)
 
-            if list_cte > 100:
+            if len(list_cte) > 100:
                 break
 
             world.player.apply_control(control)
