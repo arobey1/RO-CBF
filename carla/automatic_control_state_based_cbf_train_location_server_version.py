@@ -65,9 +65,12 @@ except IndexError:
 import carla
 from carla import ColorConverter as cc
 
-sys.path.append('../../../carla/')
+sys.path.insert(0, '../../../carla/')
+# sys.path.append('~/carla_docker/PythonAPI/carla/')
 
 from agents.navigation.roaming_agent_customized import RoamingAgent  # pylint: disable=import-error
+
+# from navigation.roaming_agent_customized import RoamingAgent
 
 # ==============================================================================
 # -- Set environment variables and define global variables ---------------------
@@ -735,6 +738,7 @@ def game_loop(args):
         #     pygame.HWSURFACE | pygame.DOUBLEBUF)
 
         hud = HUD(args.width, args.height)
+        print(client.get_available_maps())
         world = World(client.load_world('Town06'), hud, args,
                       initial_position_array[0], initial_position_array[1], initial_position_array[2])
         controller = KeyboardControl(world)
