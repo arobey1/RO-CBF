@@ -52,7 +52,12 @@ except IndexError:
     print("now")
     pass
 
-sys.path.append(glob.glob('../../../carla/dist/carla-0.9.9-py3.7-linux-x86_64.egg')[0])
+OUTPUT_PATH = 'state_based_cbf_resulting_trajectory.png'
+DISPLAY = False
+ADD_PATH = True
+
+if ADD_PATH:
+    sys.path.append(glob.glob('../../../carla/dist/carla-0.9.9-py3.7-linux-x86_64.egg')[0])
 
 # ==============================================================================
 # -- Add PythonAPI for release mode --------------------------------------------
@@ -733,14 +738,18 @@ def game_loop(args):
         client = carla.Client(args.host, args.port)
         client.set_timeout(10.0)
 
-        # display = pygame.display.set_mode(
-        #     (args.width, args.height),
-        #     pygame.HWSURFACE | pygame.DOUBLEBUF)
+        if DISPLAY:
+            display = pygame.display.set_mode(
+                (args.width, args.height),
+                pygame.HWSURFACE | pygame.DOUBLEBUF)
 
         hud = HUD(args.width, args.height)
         print(client.get_available_maps())
         world = World(client.load_world('Town06'), hud, args,
                       initial_position_array[0], initial_position_array[1], initial_position_array[2])
+        # settings = world.world.get_settings()
+        # settings.fixed_delta_seconds = 0.015
+        # world.world.apply_settings(settings)
         controller = KeyboardControl(world)
 
         agent = RoamingAgent(world.player)
@@ -759,8 +768,9 @@ def game_loop(args):
             world.world.wait_for_tick(10.0)
 
             world.tick(clock)
-            # world.render(display)
-            # pygame.display.flip()
+            if DISPLAY:
+                world.render(display)
+                pygame.display.flip()
 
             # calculate state information of our vehicle
             location = world.player.get_transform()
@@ -841,7 +851,10 @@ def game_loop(args):
 
             # calculate steer control from the learned cbf
             steering_wheel_input, h, h_dire, feasible = safe_ctrl(jnp.array([cte, v, theta_e, d]), dot_phi_t)
-            control.steer = np.arctan(steering_wheel_input[0]) / 70 * 180 / PI
+            if v < 5:
+                control.steer = 0
+            else:
+                control.steer = np.arctan(steering_wheel_input[0]) / 70 * 180 / PI
 
             list_cte.append(cte)
             list_theta_e.append(theta_e)
@@ -852,7 +865,7 @@ def game_loop(args):
             list_h_dire_2.append(h_dire[2] / 20)
             list_feasible.append(feasible)
 
-            if len(list_cte) > 300:
+            if world.hud.simulation_time > 30:
                 break
 
             world.player.apply_control(control)
@@ -870,7 +883,7 @@ def game_loop(args):
         plt.plot(list_feasible)
         plt.legend(("cte", "theta_e", "dot_phi_t", "steer", "h", "d_h_1/20", "d_h_3/20", "status_is_feasible"))
         # plt.show()
-        plt.savefig('state_based_cbf_resulting_trajectory.png', dpi=200)
+        plt.savefig(OUTPUT_PATH, dpi=200)
 
         if world is not None:
             world.destroy()
