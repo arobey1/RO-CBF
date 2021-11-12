@@ -852,7 +852,7 @@ def game_loop(args):
             list_h_dire_2.append(h_dire[2] / 20)
             list_feasible.append(feasible)
 
-            if len(list_cte) > 100:
+            if len(list_cte) > 300:
                 break
 
             world.player.apply_control(control)
