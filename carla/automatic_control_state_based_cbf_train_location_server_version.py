@@ -52,7 +52,8 @@ except IndexError:
     print("now")
     pass
 
-OUTPUT_PATH = 'state_based_cbf_resulting_trajectory.png'
+# OUTPUT_PATH = 'state_based_cbf_resulting_trajectory_local_wizdisplay_'
+OUTPUT_PATH = 'state_based_cbf_resulting_trajectory'
 DISPLAY = False
 ADD_PATH = True
 
@@ -706,19 +707,12 @@ def game_loop(args):
     waypoints_map = npzfile['arr_2']
 
     initial_position_array = np.zeros((3, ))
-    initial_position_array[0] = waypoints_map[0, 0]
-    initial_position_array[1] = waypoints_map[0, 1]
+    initial_position_array[0] = waypoints_map[2000, 0]
+    initial_position_array[1] = waypoints_map[2000, 1]
     initial_position_array[2] = 180
 
-    # store the results in a list to be plotted later
-    list_cte = []
-    list_theta_e = []
-    list_dot_phi_t = []
-    list_steer = []
-    list_h = []
-    list_h_dire_1 = []
-    list_h_dire_2 = []
-    list_feasible = []
+    list_init_cte = [0.5, 0, -0.5]
+    list_init_theta = [-0.2 / PI * 180, 0, 0.2 / PI * 180]
 
     # load the trained cbf
     args_dict = load_json(ARGS_PATH)
@@ -731,164 +725,179 @@ def game_loop(args):
     zero_ctrl = get_zero_controller()
     safe_ctrl = make_safe_controller(zero_ctrl, learned_h, args_dict, meta_data)
 
-    pygame.init()
-    pygame.font.init()
-    world = None
-    try:
-        client = carla.Client(args.host, args.port)
-        client.set_timeout(10.0)
+    for init in range(3):
 
-        if DISPLAY:
-            display = pygame.display.set_mode(
-                (args.width, args.height),
-                pygame.HWSURFACE | pygame.DOUBLEBUF)
+        # store the results in a list to be plotted later
+        list_cte = []
+        list_theta_e = []
+        list_dot_phi_t = []
+        list_steer = []
+        list_h = []
+        list_h_dire_1 = []
+        list_h_dire_2 = []
+        list_feasible = []
+        list_time = []
 
-        hud = HUD(args.width, args.height)
-        print(client.get_available_maps())
-        world = World(client.load_world('Town06'), hud, args,
-                      initial_position_array[0], initial_position_array[1], initial_position_array[2])
-        # settings = world.world.get_settings()
-        # settings.fixed_delta_seconds = 0.015
-        # world.world.apply_settings(settings)
-        controller = KeyboardControl(world)
+        pygame.init()
+        pygame.font.init()
+        world = None
+        try:
+            client = carla.Client(args.host, args.port)
+            client.set_timeout(10.0)
 
-        agent = RoamingAgent(world.player)
-        clock = pygame.time.Clock()
-
-        while True:
-            clock.tick_busy_loop(60)
-            # if controller.parse_events(client, world, clock):
-            #     return
-
-            # As soon as the server is ready continue!
-            if not world.world.wait_for_tick(10.0):
-                continue
-
-            # as soon as the server is ready continue!
-            world.world.wait_for_tick(10.0)
-
-            world.tick(clock)
             if DISPLAY:
-                world.render(display)
-                pygame.display.flip()
+                display = pygame.display.set_mode(
+                    (args.width, args.height),
+                    pygame.HWSURFACE | pygame.DOUBLEBUF)
 
-            # calculate state information of our vehicle
-            location = world.player.get_transform()
-            velocity = world.player.get_velocity()
-            x_rear_wheel = location.location.x - 1.26 * math.cos(location.rotation.yaw / 180 * PI)
-            y_rear_wheel = location.location.y - 1.26 * math.sin(location.rotation.yaw / 180 * PI)
-            theta = location.rotation.yaw / 180 * PI
+            hud = HUD(args.width, args.height)
+            print(client.get_available_maps())
+            world = World(client.load_world('Town06'), hud, args,
+                          initial_position_array[0], initial_position_array[1] + list_init_cte[init],
+                          initial_position_array[2] + list_init_theta[init])
+            # settings = world.world.get_settings()
+            # settings.fixed_delta_seconds = 0.015
+            # world.world.apply_settings(settings)
+            controller = KeyboardControl(world)
 
-            # find next waypoint
-            distance_waypoint = np.linalg.norm(
-                waypoints_map - np.array([location.location.x, location.location.y]), axis=1)
-            index_tp = np.argmin(distance_waypoint)
-            if index_tp > x_map.shape[0] - 1000:
-                index_tp = index_tp - x_map.shape[0]
-            waypoint = [x_map[index_tp + 500], y_map[index_tp + 500]]
+            agent = RoamingAgent(world.player)
+            clock = pygame.time.Clock()
 
-            control, _ie = agent.run_step(waypoint)
+            while True:
+                clock.tick_busy_loop(60)
+                # if controller.parse_events(client, world, clock):
+                #     return
 
-            # setting constraints on our control
-            control.manual_gear_shift = True
-            control.gear = 3
-            control.brake = 0.0
+                # As soon as the server is ready continue!
+                if not world.world.wait_for_tick(10.0):
+                    continue
 
-            # calculate cte and theta_e
-            v = np.sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
-            d = -_ie
-            distance = np.linalg.norm(waypoints_map - np.array([x_rear_wheel, y_rear_wheel]), axis=1)
-            index_tp = np.argmin(distance)
-            if index_tp < x_map.shape[0] - 1:
-                waypoint_vector_x = x_map[index_tp + 1] - x_map[index_tp]
-                waypoint_vector_y = y_map[index_tp + 1] - y_map[index_tp]
-                theta_waypoint = np.arctan2(waypoint_vector_y, waypoint_vector_x)
-                theta_e = theta - theta_waypoint
-                start_waypoint_to_car_location_x = x_rear_wheel - x_map[index_tp]
-                start_waypoint_to_car_location_y = y_rear_wheel - y_map[index_tp]
-                area = -(start_waypoint_to_car_location_x * waypoint_vector_y -
-                         start_waypoint_to_car_location_y * waypoint_vector_x)
-                cte = area / np.linalg.norm(np.array([waypoint_vector_x, waypoint_vector_y]), axis=0)
-            else:
-                waypoint_vector_x = x_map[index_tp] - x_map[index_tp - 1]
-                waypoint_vector_y = y_map[index_tp] - y_map[index_tp - 1]
-                theta_waypoint = np.arctan2(waypoint_vector_y, waypoint_vector_x)
-                theta_e = theta - theta_waypoint
-                start_waypoint_to_car_location_x = x_rear_wheel - x_map[index_tp]
-                start_waypoint_to_car_location_y = y_rear_wheel - y_map[index_tp]
-                area = -(start_waypoint_to_car_location_x * waypoint_vector_y -
-                         start_waypoint_to_car_location_y * waypoint_vector_x)
-                cte = area / np.linalg.norm(np.array([waypoint_vector_x, waypoint_vector_y]), axis=0)
-            while theta_e > 1.5:
-                theta_e -= PI
-            while theta_e < -1.5:
-                theta_e += PI
+                # as soon as the server is ready continue!
+                world.world.wait_for_tick(10.0)
 
-            # calculate dot_phi_t
-            if index_tp < x_map.shape[0] - 2:
-                waypoint_vector_x = x_map[index_tp + 1] - x_map[index_tp]
-                waypoint_vector_y = y_map[index_tp + 1] - y_map[index_tp]
-                next_waypoint_vector_x = x_map[index_tp + 2] - x_map[index_tp + 1]
-                next_waypoint_vector_y = y_map[index_tp + 2] - y_map[index_tp + 1]
-            elif index_tp < x_map.shape[0] - 1:
-                waypoint_vector_x = x_map[index_tp + 1] - x_map[index_tp]
-                waypoint_vector_y = y_map[index_tp + 1] - y_map[index_tp]
-                next_waypoint_vector_x = x_map[0] - x_map[index_tp + 1]
-                next_waypoint_vector_y = y_map[0] - y_map[index_tp + 1]
-            else:
-                waypoint_vector_x = x_map[0] - x_map[index_tp]
-                waypoint_vector_y = y_map[0] - y_map[index_tp]
-                next_waypoint_vector_x = x_map[1] - x_map[0]
-                next_waypoint_vector_y = y_map[1] - y_map[0]
-            diff_theta_waypoint = np.arctan2(
-                next_waypoint_vector_y, next_waypoint_vector_x) - np.arctan2(waypoint_vector_y, waypoint_vector_x)
-            while diff_theta_waypoint > 1.5:
-                diff_theta_waypoint -= PI
-            while diff_theta_waypoint < -1.5:
-                diff_theta_waypoint += PI
-            dot_phi_t = diff_theta_waypoint * v / \
-                np.linalg.norm(np.array([waypoint_vector_x, waypoint_vector_y]))
+                world.tick(clock)
+                if DISPLAY:
+                    world.render(display)
+                    pygame.display.flip()
 
-            # calculate steer control from the learned cbf
-            steering_wheel_input, h, h_dire, feasible = safe_ctrl(jnp.array([cte, v, theta_e, d]), dot_phi_t)
-            if v < 5:
-                control.steer = 0
-            else:
-                control.steer = np.arctan(steering_wheel_input[0]) / 70 * 180 / PI
+                # calculate state information of our vehicle
+                location = world.player.get_transform()
+                velocity = world.player.get_velocity()
+                x_rear_wheel = location.location.x - 1.26 * math.cos(location.rotation.yaw / 180 * PI)
+                y_rear_wheel = location.location.y - 1.26 * math.sin(location.rotation.yaw / 180 * PI)
+                theta = location.rotation.yaw / 180 * PI
 
-            list_cte.append(cte)
-            list_theta_e.append(theta_e)
-            list_dot_phi_t.append(dot_phi_t)
-            list_steer.append(control.steer)
-            list_h.append(h)
-            list_h_dire_1.append(h_dire[0] / 20)
-            list_h_dire_2.append(h_dire[2] / 20)
-            list_feasible.append(feasible)
+                # find next waypoint
+                distance_waypoint = np.linalg.norm(
+                    waypoints_map - np.array([location.location.x, location.location.y]), axis=1)
+                index_tp = np.argmin(distance_waypoint)
+                if index_tp > x_map.shape[0] - 1000:
+                    index_tp = index_tp - x_map.shape[0]
+                waypoint = [x_map[index_tp + 500], y_map[index_tp + 500]]
 
-            if world.hud.simulation_time > 30:
-                break
+                control, _ie = agent.run_step(waypoint)
 
-            world.player.apply_control(control)
+                # setting constraints on our control
+                control.manual_gear_shift = True
+                control.gear = 3
+                control.brake = 0.0
 
-    finally:
-        # plot the resulting trajectories
-        plt.figure()
-        plt.plot(list_cte)
-        plt.plot(list_theta_e)
-        plt.plot(list_dot_phi_t)
-        plt.plot(list_steer)
-        plt.plot(list_h)
-        plt.plot(list_h_dire_1)
-        plt.plot(list_h_dire_2)
-        plt.plot(list_feasible)
-        plt.legend(("cte", "theta_e", "dot_phi_t", "steer", "h", "d_h_1/20", "d_h_3/20", "status_is_feasible"))
-        # plt.show()
-        plt.savefig(OUTPUT_PATH, dpi=200)
+                # calculate cte and theta_e
+                v = np.sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
+                d = -_ie
+                distance = np.linalg.norm(waypoints_map - np.array([x_rear_wheel, y_rear_wheel]), axis=1)
+                index_tp = np.argmin(distance)
+                if index_tp < x_map.shape[0] - 1:
+                    waypoint_vector_x = x_map[index_tp + 1] - x_map[index_tp]
+                    waypoint_vector_y = y_map[index_tp + 1] - y_map[index_tp]
+                    theta_waypoint = np.arctan2(waypoint_vector_y, waypoint_vector_x)
+                    theta_e = theta - theta_waypoint
+                    start_waypoint_to_car_location_x = x_rear_wheel - x_map[index_tp]
+                    start_waypoint_to_car_location_y = y_rear_wheel - y_map[index_tp]
+                    area = -(start_waypoint_to_car_location_x * waypoint_vector_y -
+                             start_waypoint_to_car_location_y * waypoint_vector_x)
+                    cte = area / np.linalg.norm(np.array([waypoint_vector_x, waypoint_vector_y]), axis=0)
+                else:
+                    waypoint_vector_x = x_map[index_tp] - x_map[index_tp - 1]
+                    waypoint_vector_y = y_map[index_tp] - y_map[index_tp - 1]
+                    theta_waypoint = np.arctan2(waypoint_vector_y, waypoint_vector_x)
+                    theta_e = theta - theta_waypoint
+                    start_waypoint_to_car_location_x = x_rear_wheel - x_map[index_tp]
+                    start_waypoint_to_car_location_y = y_rear_wheel - y_map[index_tp]
+                    area = -(start_waypoint_to_car_location_x * waypoint_vector_y -
+                             start_waypoint_to_car_location_y * waypoint_vector_x)
+                    cte = area / np.linalg.norm(np.array([waypoint_vector_x, waypoint_vector_y]), axis=0)
+                while theta_e > 1.5:
+                    theta_e -= PI
+                while theta_e < -1.5:
+                    theta_e += PI
 
-        if world is not None:
-            world.destroy()
+                # calculate dot_phi_t
+                if index_tp < x_map.shape[0] - 2:
+                    waypoint_vector_x = x_map[index_tp + 1] - x_map[index_tp]
+                    waypoint_vector_y = y_map[index_tp + 1] - y_map[index_tp]
+                    next_waypoint_vector_x = x_map[index_tp + 2] - x_map[index_tp + 1]
+                    next_waypoint_vector_y = y_map[index_tp + 2] - y_map[index_tp + 1]
+                elif index_tp < x_map.shape[0] - 1:
+                    waypoint_vector_x = x_map[index_tp + 1] - x_map[index_tp]
+                    waypoint_vector_y = y_map[index_tp + 1] - y_map[index_tp]
+                    next_waypoint_vector_x = x_map[0] - x_map[index_tp + 1]
+                    next_waypoint_vector_y = y_map[0] - y_map[index_tp + 1]
+                else:
+                    waypoint_vector_x = x_map[0] - x_map[index_tp]
+                    waypoint_vector_y = y_map[0] - y_map[index_tp]
+                    next_waypoint_vector_x = x_map[1] - x_map[0]
+                    next_waypoint_vector_y = y_map[1] - y_map[0]
+                diff_theta_waypoint = np.arctan2(
+                    next_waypoint_vector_y, next_waypoint_vector_x) - np.arctan2(waypoint_vector_y, waypoint_vector_x)
+                while diff_theta_waypoint > 1.5:
+                    diff_theta_waypoint -= PI
+                while diff_theta_waypoint < -1.5:
+                    diff_theta_waypoint += PI
+                dot_phi_t = diff_theta_waypoint * v / \
+                    np.linalg.norm(np.array([waypoint_vector_x, waypoint_vector_y]))
 
-        pygame.quit()
+                # calculate steer control from the learned cbf
+                steering_wheel_input, h, h_dire, feasible = safe_ctrl(jnp.array([cte, v, theta_e, d]), dot_phi_t)
+                if v < 5:
+                    control.steer = 0
+                else:
+                    control.steer = np.arctan(steering_wheel_input[0]) / 70 * 180 / PI
+
+                list_cte.append(cte)
+                list_theta_e.append(theta_e)
+                list_dot_phi_t.append(dot_phi_t)
+                list_steer.append(control.steer)
+                list_h.append(h)
+                list_h_dire_1.append(h_dire[0] / 20)
+                list_h_dire_2.append(h_dire[2] / 20)
+                list_feasible.append(feasible)
+                list_time.append(world.hud.simulation_time)
+
+                if world.hud.simulation_time > 30:
+                    break
+
+                world.player.apply_control(control)
+
+        finally:
+            # plot the resulting trajectories
+            plt.figure()
+            plt.plot(list_time, list_cte)
+            plt.plot(list_time, list_theta_e)
+            plt.plot(list_time, list_dot_phi_t)
+            plt.plot(list_time, list_steer)
+            plt.plot(list_time, list_h)
+            plt.plot(list_time, list_h_dire_1)
+            plt.plot(list_time, list_h_dire_2)
+            plt.plot(list_time, list_feasible)
+            plt.legend(("cte", "theta_e", "dot_phi_t", "steer", "h", "d_h_1/20", "d_h_3/20", "status_is_feasible"))
+            # plt.show()
+            plt.savefig(OUTPUT_PATH + str(init) + '.png', dpi=200)
+
+            if world is not None:
+                world.destroy()
+
+            pygame.quit()
 
 
 # ==============================================================================
