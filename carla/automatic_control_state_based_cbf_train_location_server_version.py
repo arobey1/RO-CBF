@@ -712,7 +712,7 @@ def game_loop(args):
     initial_position_array[2] = 180
 
     list_init_cte = [0.4, 0, -0.4]
-    list_init_theta = [-0.2 / PI * 180, 0, 0.2 / PI * 180]
+    list_init_theta = [-0.15 / PI * 180, 0, 0.15 / PI * 180]
 
     # load the trained cbf
     args_dict = load_json(ARGS_PATH)
