@@ -71,8 +71,9 @@ from agents.navigation.roaming_agent_customized import RoamingAgent  # pylint: d
 # ==============================================================================
 
 os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
-os.environ['XLA_PYTHON_CLIENT_ALLOCATOR'] = 'platform'
+# os.environ['XLA_PYTHON_CLIENT_ALLOCATOR'] = 'platform'
 os.environ['TF_FORCE_UNIFIED_MEMORY'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 front_camera_image = 0
 PI = 3.1415926
 
@@ -698,8 +699,8 @@ def game_loop(args):
     waypoints_map = npzfile['arr_2']
 
     initial_position_array = np.zeros((3, ))
-    initial_position_array[0] = waypoints_map[0, 0]
-    initial_position_array[1] = waypoints_map[0, 1]
+    initial_position_array[0] = waypoints_map[2000, 0]
+    initial_position_array[1] = waypoints_map[2000, 1]
     initial_position_array[2] = 180
 
     # store the results in a list to be plotted later
@@ -740,7 +741,7 @@ def game_loop(args):
 
         hud = HUD(args.width, args.height)
         world = World(client.load_world('Town06'), hud, args,
-                      initial_position_array[0], initial_position_array[1], initial_position_array[2])
+                      initial_position_array[0], initial_position_array[1] - 1.0, initial_position_array[2] + 0.4 / PI * 180)
         settings = world.world.get_settings()
         # lower the frequency of server simulation
         settings.fixed_delta_seconds = 0.015

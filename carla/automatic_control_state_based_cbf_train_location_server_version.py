@@ -54,8 +54,8 @@ except IndexError:
 
 # OUTPUT_PATH = 'state_based_cbf_resulting_trajectory_local_wizdisplay_'
 OUTPUT_PATH = 'state_based_cbf_resulting_trajectory'
-DISPLAY = False
-ADD_PATH = True
+DISPLAY = True
+ADD_PATH = False
 
 if ADD_PATH:
     sys.path.append(glob.glob('../../../carla/dist/carla-0.9.9-py3.7-linux-x86_64.egg')[0])
@@ -83,7 +83,9 @@ from agents.navigation.roaming_agent_customized import RoamingAgent  # pylint: d
 # ==============================================================================
 
 os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
+# os.environ['XLA_PYTHON_CLIENT_ALLOCATOR'] = 'platform'
 os.environ['TF_FORCE_UNIFIED_MEMORY'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 PI = 3.1415926
 
 
@@ -711,8 +713,8 @@ def game_loop(args):
     initial_position_array[1] = waypoints_map[2000, 1]
     initial_position_array[2] = 180
 
-    list_init_cte = [0.4, 0, -0.4]
-    list_init_theta = [-0.15 / PI * 180, 0, 0.15 / PI * 180]
+    list_init_cte = [1.0, 0, -1.0]
+    list_init_theta = [-0.4 / PI * 180, 0, 0.4 / PI * 180]
 
     # load the trained cbf
     args_dict = load_json(ARGS_PATH)
@@ -859,7 +861,7 @@ def game_loop(args):
 
                 # calculate steer control from the learned cbf
                 steering_wheel_input, h, h_dire, feasible = safe_ctrl(jnp.array([cte, v, theta_e, d]), dot_phi_t)
-                if v < 5:
+                if v < 0:
                     control.steer = 0
                 else:
                     control.steer = np.arctan(steering_wheel_input[0]) / 70 * 180 / PI
