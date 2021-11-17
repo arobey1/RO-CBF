@@ -30,12 +30,15 @@ class CarlaDataset(Dataset):
 
         data = self._read()
 
-        if train is True:
-            data = data.head(n=int(0.8 * len(data)))
-        else:
-            data = data.tail(n=int(0.2 * len(data)))
+        # if train is True:
+        #     data = data.head(n=int(0.8 * len(data)))
+        # else:
+        #     data = data.tail(n=int(0.2 * len(data)))
+
+        # data = data.head(1000)
 
         self.images = np.stack(data['front_camera_image'].to_numpy(), axis=0)
+        self.states = data[['speed(m/s)', 'theta_e', 'd']]
         self.labels = data[labels].to_numpy().reshape(len(data),)
 
     def __len__(self):
@@ -43,7 +46,6 @@ class CarlaDataset(Dataset):
 
     def __getitem__(self, index):
         return self._normalize(self.images[index]), self.labels[index]
-        # return self.images[index], self.labels[index]
 
     @staticmethod
     def _read():

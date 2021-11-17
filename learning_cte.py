@@ -12,9 +12,11 @@ import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+from tqdm import tqdm
 
 from core.data.images import loader
 from core.utils.meters import AverageMeter
+from core.data.load import get_bdy_states_rknn
 
 def main():
 
@@ -59,7 +61,7 @@ def main():
                 print(f'Batch {batch_idx}/{len(train_loader)}\tLoss: {train_loss_meter.avg:.3f}')
 
         all_preds, all_labels = [], []
-        for imgs, labels in test_loader:
+        for imgs, labels in tqdm(test_loader):
             preds, _ = forward.apply(params, nn_state, None, imgs, is_training=False)
             test_loss = (1. / preds.shape[0]) * jnp.sum(jnp.square(preds - labels.reshape(preds.shape)))
             # test_loss, _ = loss_fn(params, batch, nn_state, is_training=False)
@@ -67,7 +69,7 @@ def main():
             all_preds.append(jnp.asarray(preds))
             all_labels.append(jnp.asarray(labels.reshape(preds.shape)))
 
-        plot_preds(all_preds, all_labels)
+        plot_preds(all_preds, all_labels, test_loader.dataset.states)
 
         # save checkpoint at the end of the epoch
         save_checkpoint(params, nn_state)
@@ -82,7 +84,7 @@ def _forward(images, is_training):
     return ResNet18(1, resnet_v2=True)(images, is_training)
 
 def save_checkpoint(params, nn_state):
-    dirname = 'perception-ckpts'
+    dirname = 'perception-ckpts-viz'
     os.makedirs(dirname, exist_ok=True)
     with open(os.path.join(dirname, 'params.npy'), 'wb') as f:
         pickle.dump(params, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -90,7 +92,7 @@ def save_checkpoint(params, nn_state):
         pickle.dump(nn_state, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 def load_checkpoint():
-    dirname = 'perception-ckpts'
+    dirname = 'perception-ckpts-viz'
     with open(os.path.join(dirname, 'params.npy'), 'rb') as f:
         params = pickle.load(f)
     with open(os.path.join(dirname, 'nn_state.npy'), 'rb') as f:
@@ -98,17 +100,28 @@ def load_checkpoint():
 
     return params, nn_state
 
-def plot_preds(all_preds, all_labels):
+def plot_preds(all_preds, all_labels, state_df):
     preds, labels = np.vstack(all_preds), np.vstack(all_labels)
     df = pd.DataFrame(
         list(zip(np.squeeze(preds), np.squeeze(labels))), 
         columns=['Predictions', 'Labels'])
+    full_df = pd.concat([df, state_df], axis=1)
+    get_bdy_states_rknn(full_df, ['Predictions', 'speed(m/s)', 'theta_e', 'd'], 200)
+
     fig, ax = plt.subplots()
     sns.set(style='darkgrid', font_scale=1.5)
-    sns.scatterplot(data=df, x='Labels', y='Predictions', ax=ax)
+    sns.scatterplot(data=full_df, x='Labels', y='Predictions', hue='Safe', ax=ax)
     line = np.linspace(-2, 2, 1000)
     ax.plot(line, line, 'k--')
-    plt.savefig('perception-ckpts/perception-ckpts.png')
+    ax.set_xlabel(r'True $c_e$')
+    ax.set_ylabel(r'Predicted $c_e$')
+    handles, labels = ax.get_legend_handles_labels()
+    label_dict = {'True': 'Safe', True: 'Safe', 'False': 'Unsafe', False: 'Unsafe'}
+    new_labels = [label_dict[label] for label in labels]
+    ax.legend(handles=handles[0:], labels=new_labels)
+    plt.subplots_adjust(bottom=0.15)
+
+    plt.savefig('perception-ckpts-viz/perception-ckpts.png')
     plt.close()
 
 if __name__ == '__main__':
