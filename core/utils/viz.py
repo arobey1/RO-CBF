@@ -7,6 +7,8 @@ import numpy as np
 import jax 
 import jax.numpy as jnp
 
+sns.set(style='darkgrid', font_scale=2.5)
+
 class Visualizer:
     def __init__(self, net, results_path, data_dict, cbf_fn):
         self._net = net
@@ -24,8 +26,7 @@ class Visualizer:
 
         self._chunk_df()
 
-        sns.set_style('darkgrid')
-
+        
     def _chunk_df(self):
 
         n_chunks = 3
@@ -72,7 +73,7 @@ class Visualizer:
         unsafe_df['Safe'] = False
         all_df = pd.concat([safe_df, unsafe_df], ignore_index=True)
 
-        sns.scatterplot(data=all_df, ax=ax, x='cte', y='theta_e', hue='Safe')
+        sns.scatterplot(data=all_df, ax=ax, x='cte', y='theta_e') #, hue='Safe')
 
         min_cte, max_cte = df['cte'].min(), df['cte'].max()
         min_theta_e, max_theta_e = df['theta_e'].min(), df['theta_e'].max()
@@ -88,10 +89,15 @@ class Visualizer:
             )(theta_e_range)
         )(cte_range).squeeze()
 
-        cntr_plt = ax.contour(cte_range, theta_e_range, hvals, linewidths=3, colors='k')
-        plt.clabel(cntr_plt, inline=1, fontsize=10)
-        ax.set_xlabel('cte')
-        ax.set_ylabel('theta_e')
+        cntr_plt = ax.contour(cte_range, theta_e_range, hvals, linewidths=3, colors='k', levels=4)
+        plt.clabel(cntr_plt, inline=1, fontsize=25)
+        ax.set_xlabel(r'$c_e$')
+        ax.set_ylabel(r'$\theta_e$')
+        handles, labels = ax.get_legend_handles_labels()
+        label_dict = {'True': 'Safe', True: 'Safe', 'False': 'Unsafe', False: 'Unsafe'}
+        new_labels = [label_dict[label] for label in labels]
+        ax.legend(handles=handles[0:], labels=new_labels)
+        plt.subplots_adjust(left=0.2)
 
         wandb.log({'level_set': wandb.Image(plt)})
         plt.savefig(os.path.join(self._results_path, 'level_set.png'))
